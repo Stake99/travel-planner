@@ -4,6 +4,7 @@ import { CityService } from '#services/city_service'
 import { IWeatherClient } from '#clients/interfaces/weather_client_interface'
 import { ICacheManager } from '#clients/interfaces/cache_manager_interface'
 import { City } from '#models/city'
+import { createMockMetrics } from '../helpers/mock_metrics.js'
 
 test.group('CityService - Property-Based Tests', () => {
   /**
@@ -65,7 +66,7 @@ test.group('CityService - Property-Based Tests', () => {
             clear: async () => {},
           }
 
-          const cityService = new CityService(mockWeatherClient, mockCacheManager)
+          const cityService = new CityService(mockWeatherClient, mockCacheManager, createMockMetrics())
 
           // Execute the search
           const results = await cityService.searchCities(query)
@@ -202,7 +203,7 @@ test.group('CityService - Property-Based Tests', () => {
             clear: async () => {},
           }
 
-          const cityService = new CityService(mockWeatherClient, mockCacheManager)
+          const cityService = new CityService(mockWeatherClient, mockCacheManager, createMockMetrics())
 
           // Execute the search
           const results = await cityService.searchCities(query)

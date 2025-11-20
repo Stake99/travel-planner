@@ -3,6 +3,7 @@ import { CityService } from '#services/city_service'
 import { IWeatherClient } from '#clients/interfaces/weather_client_interface'
 import { ICacheManager } from '#clients/interfaces/cache_manager_interface'
 import { City } from '#models/city'
+import { createMockMetrics } from '../helpers/mock_metrics.js'
 
 test.group('CityService - Unit Tests', () => {
   /**
@@ -24,7 +25,7 @@ test.group('CityService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const cityService = new CityService(mockWeatherClient, mockCacheManager)
+    const cityService = new CityService(mockWeatherClient, mockCacheManager, createMockMetrics())
 
     // Test empty string
     const result1 = await cityService.searchCities('')
@@ -63,7 +64,7 @@ test.group('CityService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const cityService = new CityService(mockWeatherClient, mockCacheManager)
+    const cityService = new CityService(mockWeatherClient, mockCacheManager, createMockMetrics())
 
     // Test query with special characters
     await cityService.searchCities('London@#$%^&*()')
@@ -127,7 +128,7 @@ test.group('CityService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const cityService = new CityService(mockWeatherClient, mockCacheManager)
+    const cityService = new CityService(mockWeatherClient, mockCacheManager, createMockMetrics())
 
     // First call - should hit cache
     const result = await cityService.searchCities('London')
@@ -193,7 +194,7 @@ test.group('CityService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const cityService = new CityService(mockWeatherClient, mockCacheManager)
+    const cityService = new CityService(mockWeatherClient, mockCacheManager, createMockMetrics())
 
     // Search for "London"
     const result = await cityService.searchCities('London')
@@ -240,7 +241,7 @@ test.group('CityService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const cityService = new CityService(mockWeatherClient, mockCacheManager)
+    const cityService = new CityService(mockWeatherClient, mockCacheManager, createMockMetrics())
 
     // Test with limit of 5
     const result = await cityService.searchCities('City', 5)
@@ -294,7 +295,7 @@ test.group('CityService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const cityService = new CityService(mockWeatherClient, mockCacheManager)
+    const cityService = new CityService(mockWeatherClient, mockCacheManager, createMockMetrics())
 
     await cityService.searchCities('Paris')
 

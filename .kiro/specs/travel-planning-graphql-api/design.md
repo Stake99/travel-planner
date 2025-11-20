@@ -2470,12 +2470,22 @@ spec:
 - Redis 7+ (for caching)
 - Load balancer (for multiple instances)
 
+**AWS EC2 Production Requirements**:
+
+- Instance Type: t3.small or larger (2 vCPU, 2GB RAM minimum)
+- Operating System: Amazon Linux 2 or Ubuntu Server 22.04 LTS
+- Storage: 20GB EBS volume (gp3 recommended)
+- Security Group: Allow ports 22 (SSH), 80 (HTTP), 443 (HTTPS), 3306 (MySQL - internal only)
+- Elastic IP: Recommended for consistent DNS mapping
+- MySQL: RDS instance (t3.micro minimum) or self-hosted on EC2
+
 **Scaling Considerations**:
 
 - Horizontal scaling: Add more instances behind load balancer
 - Stateless design: No session state, cache in Redis
-- Database: Not required (API is read-only from external source)
+- Database: MySQL for persistent caching and future data storage
 - CDN: Not applicable (dynamic data)
+- Auto-scaling: Configure EC2 Auto Scaling Groups based on CPU/memory metrics
 
 ### Monitoring & Observability
 
@@ -2558,6 +2568,1384 @@ app.use(
   })
 )
 ```
+
+## AWS EC2 Deployment Architecture
+
+### Deployment Overview
+
+The application will be deployed on AWS EC2 with the following stack:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Internet                                 │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  AWS Route 53 (DNS)                          │
+│              api.yourdomain.com → Elastic IP                 │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  EC2 Instance (t3.small)                     │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │              Nginx (Reverse Proxy)                  │    │
+│  │  - SSL Termination (Certbot/Let's Encrypt)         │    │
+│  │  - Port 80 → 443 redirect                          │    │
+│  │  - Port 443 → localhost:3333                       │    │
+│  │  - Static file serving                             │    │
+│  │  - Gzip compression                                │    │
+│  └──────────────────────┬─────────────────────────────┘    │
+│                         │                                    │
+│                         ▼                                    │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │           PM2 Process Manager                       │    │
+│  │  - Cluster mode (4 instances)                      │    │
+│  │  - Auto-restart on failure                         │    │
+│  │  - Log management                                  │    │
+│  │  - Zero-downtime reload                            │    │
+│  └──────────────────────┬─────────────────────────────┘    │
+│                         │                                    │
+│                         ▼                                    │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │         Node.js Application (Port 3333)            │    │
+│  │  - AdonisJS + Apollo GraphQL Server                │    │
+│  │  - Business Logic                                  │    │
+│  │  - API Integration                                 │    │
+│  └──────────────────────┬─────────────────────────────┘    │
+│                         │                                    │
+└─────────────────────────┼────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│              MySQL Database (RDS or EC2)                     │
+│  - Cache storage                                             │
+│  - Session data (future)                                     │
+│  - User preferences (future)                                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Component Responsibilities
+
+#### Nginx (Reverse Proxy)
+
+**Purpose**: Handle incoming HTTP/HTTPS traffic, SSL termination, and forward requests to the application
+
+**Configuration Location**: `/etc/nginx/sites-available/travel-api`
+
+**Key Features**:
+- SSL/TLS termination with Let's Encrypt certificates
+- HTTP to HTTPS redirection
+- Reverse proxy to PM2-managed Node.js application
+- Gzip compression for responses
+- Static file serving (if needed)
+- Request buffering and timeout configuration
+- Security headers
+
+**Sample Configuration**:
+
+```nginx
+# /etc/nginx/sites-available/travel-api
+
+upstream nodejs_backend {
+    least_conn;
+    server 127.0.0.1:3333;
+    keepalive 64;
+}
+
+# HTTP - redirect to HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.yourdomain.com;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$server_name$request_uri;
+    }
+}
+
+# HTTPS
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api.yourdomain.com;
+
+    # SSL Configuration
+    ssl_certificate /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.yourdomain.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # Security Headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # Gzip Compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types application/json text/plain text/css application/javascript;
+
+    # GraphQL Endpoint
+    location /graphql {
+        proxy_pass http://nodejs_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # Health Check Endpoint
+    location /health {
+        proxy_pass http://nodejs_backend;
+        access_log off;
+    }
+
+    # Root
+    location / {
+        return 404;
+    }
+}
+```
+
+#### PM2 (Process Manager)
+
+**Purpose**: Manage Node.js application processes with clustering, auto-restart, and monitoring
+
+**Configuration Location**: `ecosystem.config.js` in project root
+
+**Key Features**:
+- Cluster mode for utilizing all CPU cores
+- Automatic restart on crashes
+- Zero-downtime deployments
+- Log management and rotation
+- Memory and CPU monitoring
+- Environment variable management
+
+**Sample Configuration**:
+
+```javascript
+// ecosystem.config.js
+module.exports = {
+  apps: [
+    {
+      name: 'travel-api',
+      script: './build/bin/server.js',
+      instances: 'max', // Use all available CPU cores
+      exec_mode: 'cluster',
+      env_production: {
+        NODE_ENV: 'production',
+        PORT: 3333,
+        HOST: '127.0.0.1',
+        
+        // Database
+        DB_HOST: 'localhost',
+        DB_PORT: 3306,
+        DB_USER: 'travel_api',
+        DB_PASSWORD: process.env.DB_PASSWORD,
+        DB_DATABASE: 'travel_api_db',
+        
+        // Cache
+        CACHE_ENABLED: true,
+        CACHE_TTL_CITY_SEARCH: 3600,
+        CACHE_TTL_WEATHER: 1800,
+        
+        // API
+        OPENMETEO_BASE_URL: 'https://api.open-meteo.com/v1',
+        OPENMETEO_GEOCODING_URL: 'https://geocoding-api.open-meteo.com/v1',
+        OPENMETEO_TIMEOUT: 5000,
+        
+        // GraphQL
+        GRAPHQL_PLAYGROUND: false,
+        GRAPHQL_INTROSPECTION: false,
+      },
+      
+      // Logging
+      error_file: '/var/log/travel-api/error.log',
+      out_file: '/var/log/travel-api/out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      
+      // Process Management
+      max_memory_restart: '500M',
+      min_uptime: '10s',
+      max_restarts: 10,
+      autorestart: true,
+      
+      // Graceful Shutdown
+      kill_timeout: 5000,
+      wait_ready: true,
+      listen_timeout: 10000,
+    },
+  ],
+}
+```
+
+#### Certbot (SSL Certificate Management)
+
+**Purpose**: Obtain and automatically renew SSL/TLS certificates from Let's Encrypt
+
+**Installation**: Via package manager (apt/yum)
+
+**Key Features**:
+- Free SSL certificates from Let's Encrypt
+- Automatic renewal via cron job
+- Nginx plugin for automatic configuration
+- 90-day certificate validity with auto-renewal
+
+**Certificate Renewal**:
+- Automatic renewal via systemd timer or cron
+- Renewal check runs twice daily
+- Certificates renewed 30 days before expiration
+- Nginx automatically reloaded after renewal
+
+**Cron Job** (automatic renewal):
+
+```bash
+# /etc/cron.d/certbot
+0 */12 * * * root certbot renew --quiet --nginx --post-hook "systemctl reload nginx"
+```
+
+#### MySQL Database
+
+**Purpose**: Persistent data storage for caching, future user data, and application state
+
+**Deployment Options**:
+
+1. **AWS RDS MySQL** (Recommended for production):
+   - Managed service with automatic backups
+   - Multi-AZ deployment for high availability
+   - Automatic minor version upgrades
+   - Instance type: db.t3.micro (minimum)
+
+2. **Self-hosted on EC2**:
+   - More control over configuration
+   - Lower cost for small workloads
+   - Requires manual backup management
+
+**Database Schema** (Initial):
+
+```sql
+-- Cache table for storing API responses
+CREATE TABLE cache_entries (
+    cache_key VARCHAR(255) PRIMARY KEY,
+    cache_value JSON NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_expires_at (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Future: User preferences table
+CREATE TABLE user_preferences (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(255) UNIQUE NOT NULL,
+    preferences JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+**MySQL Configuration** (`/etc/mysql/mysql.conf.d/mysqld.cnf`):
+
+```ini
+[mysqld]
+# Basic Settings
+bind-address = 127.0.0.1
+port = 3306
+max_connections = 100
+
+# Performance
+innodb_buffer_pool_size = 512M
+innodb_log_file_size = 128M
+innodb_flush_log_at_trx_commit = 2
+innodb_flush_method = O_DIRECT
+
+# Character Set
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+# Logging
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow-query.log
+long_query_time = 2
+```
+
+### Deployment Scripts
+
+#### 1. Initial Server Setup Script
+
+**File**: `scripts/setup-server.sh`
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=== Travel API - AWS EC2 Server Setup ==="
+
+# Update system packages
+echo "Updating system packages..."
+sudo yum update -y  # For Amazon Linux 2
+# sudo apt update && sudo apt upgrade -y  # For Ubuntu
+
+# Install Node.js 20.x
+echo "Installing Node.js 20.x..."
+curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+sudo yum install -y nodejs  # For Amazon Linux 2
+# curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# sudo apt install -y nodejs  # For Ubuntu
+
+# Verify Node.js installation
+node --version
+npm --version
+
+# Install PM2 globally
+echo "Installing PM2..."
+sudo npm install -g pm2
+
+# Setup PM2 startup script
+sudo pm2 startup systemd -u ec2-user --hp /home/ec2-user
+# sudo pm2 startup systemd -u ubuntu --hp /home/ubuntu  # For Ubuntu
+
+# Install Nginx
+echo "Installing Nginx..."
+sudo amazon-linux-extras install nginx1 -y  # For Amazon Linux 2
+# sudo apt install -y nginx  # For Ubuntu
+
+# Start and enable Nginx
+sudo systemctl start nginx
+sudo systemctl enable nginx
+
+# Install Certbot
+echo "Installing Certbot..."
+sudo yum install -y certbot python3-certbot-nginx  # For Amazon Linux 2
+# sudo apt install -y certbot python3-certbot-nginx  # For Ubuntu
+
+# Install MySQL
+echo "Installing MySQL..."
+sudo yum install -y mysql-server  # For Amazon Linux 2
+# sudo apt install -y mysql-server  # For Ubuntu
+
+# Start and enable MySQL
+sudo systemctl start mysqld
+sudo systemctl enable mysqld
+
+# Secure MySQL installation
+echo "Please run 'sudo mysql_secure_installation' manually after this script completes"
+
+# Create application directory
+echo "Creating application directory..."
+sudo mkdir -p /var/www/travel-api
+sudo chown ec2-user:ec2-user /var/www/travel-api  # For Amazon Linux 2
+# sudo chown ubuntu:ubuntu /var/www/travel-api  # For Ubuntu
+
+# Create log directory
+sudo mkdir -p /var/log/travel-api
+sudo chown ec2-user:ec2-user /var/log/travel-api  # For Amazon Linux 2
+# sudo chown ubuntu:ubuntu /var/log/travel-api  # For Ubuntu
+
+# Create Certbot webroot
+sudo mkdir -p /var/www/certbot
+sudo chown nginx:nginx /var/www/certbot
+
+echo "=== Server setup complete! ==="
+echo "Next steps:"
+echo "1. Run 'sudo mysql_secure_installation'"
+echo "2. Configure MySQL database and user"
+echo "3. Deploy application code"
+echo "4. Configure Nginx"
+echo "5. Obtain SSL certificate with Certbot"
+```
+
+#### 2. Database Setup Script
+
+**File**: `scripts/setup-database.sh`
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=== Setting up MySQL Database ==="
+
+# Variables
+DB_NAME="travel_api_db"
+DB_USER="travel_api"
+DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -base64 32)}"
+
+echo "Database Name: $DB_NAME"
+echo "Database User: $DB_USER"
+echo "Database Password: $DB_PASSWORD"
+echo ""
+echo "IMPORTANT: Save this password securely!"
+echo ""
+
+# Create database and user
+sudo mysql -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+sudo mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';"
+sudo mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';"
+sudo mysql -e "FLUSH PRIVILEGES;"
+
+# Run migrations
+echo "Creating database schema..."
+sudo mysql ${DB_NAME} << 'EOF'
+CREATE TABLE IF NOT EXISTS cache_entries (
+    cache_key VARCHAR(255) PRIMARY KEY,
+    cache_value JSON NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_expires_at (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS user_preferences (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(255) UNIQUE NOT NULL,
+    preferences JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+EOF
+
+echo "=== Database setup complete! ==="
+echo "Add this to your .env file:"
+echo "DB_HOST=localhost"
+echo "DB_PORT=3306"
+echo "DB_USER=${DB_USER}"
+echo "DB_PASSWORD=${DB_PASSWORD}"
+echo "DB_DATABASE=${DB_NAME}"
+```
+
+#### 3. Application Deployment Script
+
+**File**: `scripts/deploy.sh`
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=== Deploying Travel API ==="
+
+# Variables
+APP_DIR="/var/www/travel-api"
+REPO_URL="${REPO_URL:-https://github.com/yourusername/travel-api.git}"
+BRANCH="${BRANCH:-main}"
+
+# Navigate to app directory
+cd $APP_DIR
+
+# Pull latest code
+echo "Pulling latest code from $BRANCH..."
+if [ -d ".git" ]; then
+    git fetch origin
+    git reset --hard origin/$BRANCH
+else
+    git clone -b $BRANCH $REPO_URL .
+fi
+
+# Install dependencies
+echo "Installing dependencies..."
+npm ci --production
+
+# Build application
+echo "Building application..."
+npm run build
+
+# Run database migrations (if any)
+# node ace migration:run --force
+
+# Reload PM2
+echo "Reloading PM2..."
+if pm2 list | grep -q "travel-api"; then
+    pm2 reload ecosystem.config.js --env production
+else
+    pm2 start ecosystem.config.js --env production
+fi
+
+# Save PM2 configuration
+pm2 save
+
+echo "=== Deployment complete! ==="
+echo "Application status:"
+pm2 status
+```
+
+#### 4. Nginx Configuration Script
+
+**File**: `scripts/configure-nginx.sh`
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=== Configuring Nginx ==="
+
+# Variables
+DOMAIN="${DOMAIN:-api.yourdomain.com}"
+APP_PORT="${APP_PORT:-3333}"
+
+# Create Nginx configuration
+sudo tee /etc/nginx/sites-available/travel-api > /dev/null << EOF
+upstream nodejs_backend {
+    least_conn;
+    server 127.0.0.1:${APP_PORT};
+    keepalive 64;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://\$server_name\$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ${DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types application/json text/plain text/css application/javascript;
+
+    location /graphql {
+        proxy_pass http://nodejs_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+        
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    location /health {
+        proxy_pass http://nodejs_backend;
+        access_log off;
+    }
+
+    location / {
+        return 404;
+    }
+}
+EOF
+
+# Create sites-enabled directory if it doesn't exist (for Amazon Linux)
+sudo mkdir -p /etc/nginx/sites-enabled
+
+# Enable site
+sudo ln -sf /etc/nginx/sites-available/travel-api /etc/nginx/sites-enabled/
+
+# Test Nginx configuration
+sudo nginx -t
+
+# Reload Nginx
+sudo systemctl reload nginx
+
+echo "=== Nginx configuration complete! ==="
+echo "Next step: Obtain SSL certificate with:"
+echo "sudo certbot --nginx -d ${DOMAIN}"
+```
+
+#### 5. SSL Certificate Setup Script
+
+**File**: `scripts/setup-ssl.sh`
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=== Setting up SSL Certificate ==="
+
+# Variables
+DOMAIN="${DOMAIN:-api.yourdomain.com}"
+EMAIL="${EMAIL:-admin@yourdomain.com}"
+
+# Obtain certificate
+echo "Obtaining SSL certificate for ${DOMAIN}..."
+sudo certbot --nginx -d ${DOMAIN} --non-interactive --agree-tos --email ${EMAIL}
+
+# Test automatic renewal
+echo "Testing automatic renewal..."
+sudo certbot renew --dry-run
+
+# Setup automatic renewal cron job
+echo "Setting up automatic renewal..."
+sudo tee /etc/cron.d/certbot > /dev/null << 'EOF'
+0 */12 * * * root certbot renew --quiet --nginx --post-hook "systemctl reload nginx"
+EOF
+
+echo "=== SSL setup complete! ==="
+echo "Certificate will auto-renew before expiration"
+```
+
+### CI/CD Automation with GitHub Actions
+
+#### Overview
+
+The CI/CD pipeline automates testing, building, and deployment to AWS EC2 with PM2. The pipeline consists of two workflows:
+
+1. **CI Workflow** (`.github/workflows/ci.yml`): Runs on all pushes and pull requests
+2. **CD Workflow** (`.github/workflows/deploy.yml`): Runs on pushes to main branch
+
+#### CI Workflow Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   GitHub Push/PR Event                       │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│              GitHub Actions CI Workflow                      │
+│                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │   Lint Job   │  │ TypeCheck Job│  │   Test Job   │     │
+│  │              │  │              │  │              │     │
+│  │ - ESLint     │  │ - tsc --noEmit│ │ - Unit tests │     │
+│  │ - Prettier   │  │              │  │ - Integration│     │
+│  │              │  │              │  │ - Coverage   │     │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
+│         │                  │                  │             │
+│         └──────────────────┴──────────────────┘             │
+│                            │                                │
+│                            ▼                                │
+│                   ┌──────────────┐                          │
+│                   │  Build Job   │                          │
+│                   │              │                          │
+│                   │ - npm build  │                          │
+│                   │ - Upload     │                          │
+│                   │   artifacts  │                          │
+│                   └──────────────┘                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### CD Workflow Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              GitHub Push to Main Branch                      │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│            GitHub Actions CD Workflow                        │
+│                                                              │
+│  1. Build Application                                        │
+│     - npm ci                                                 │
+│     - npm run build                                          │
+│                                                              │
+│  2. Create Deployment Package                                │
+│     - Tar build artifacts                                    │
+│     - Include ecosystem.config.js                            │
+│                                                              │
+│  3. SSH to EC2 Instance                                      │
+│     - Use GitHub Secrets for SSH key                         │
+│     - Connect to production server                           │
+│                                                              │
+│  4. Backup Current Version                                   │
+│     - Create timestamped backup                              │
+│     - Store in /var/backups/travel-api                       │
+│                                                              │
+│  5. Deploy New Version                                       │
+│     - Extract deployment package                             │
+│     - Install production dependencies                        │
+│     - Update .env if needed                                  │
+│                                                              │
+│  6. Reload PM2                                               │
+│     - pm2 reload ecosystem.config.js                         │
+│     - Zero-downtime deployment                               │
+│                                                              │
+│  7. Health Check                                             │
+│     - Wait for application startup                           │
+│     - Verify /health endpoint                                │
+│     - Rollback if health check fails                         │
+│                                                              │
+│  8. Cleanup                                                  │
+│     - Remove old backups (keep last 5)                       │
+│     - Clear temporary files                                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### GitHub Actions Configuration Files
+
+**File**: `.github/workflows/ci.yml`
+
+```yaml
+name: CI Pipeline
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+  typecheck:
+    name: TypeScript Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type check
+        run: npm run typecheck
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Generate coverage report
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/coverage-final.json
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: build/
+          retention-days: 7
+```
+
+**File**: `.github/workflows/deploy.yml`
+
+```yaml
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to AWS EC2
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --production
+
+      - name: Build application
+        run: npm run build
+
+      - name: Create deployment package
+        run: |
+          tar -czf deploy.tar.gz \
+            build/ \
+            node_modules/ \
+            package.json \
+            package-lock.json \
+            ecosystem.config.js
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.EC2_HOST }}
+          SSH_USER: ${{ secrets.EC2_USER }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts
+
+      - name: Deploy to EC2
+        env:
+          SSH_HOST: ${{ secrets.EC2_HOST }}
+          SSH_USER: ${{ secrets.EC2_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          # Copy deployment package to server
+          scp -i ~/.ssh/deploy_key deploy.tar.gz $SSH_USER@$SSH_HOST:/tmp/
+
+          # Execute deployment script on server
+          ssh -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST << 'ENDSSH'
+            set -e
+            
+            APP_DIR="/var/www/travel-api"
+            BACKUP_DIR="/var/backups/travel-api"
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            
+            echo "=== Starting deployment at $TIMESTAMP ==="
+            
+            # Create backup of current version
+            if [ -d "$APP_DIR" ]; then
+              echo "Creating backup..."
+              mkdir -p $BACKUP_DIR
+              tar -czf $BACKUP_DIR/backup_$TIMESTAMP.tar.gz -C $APP_DIR .
+              echo "Backup created: $BACKUP_DIR/backup_$TIMESTAMP.tar.gz"
+            fi
+            
+            # Extract new version
+            echo "Extracting new version..."
+            mkdir -p $APP_DIR
+            tar -xzf /tmp/deploy.tar.gz -C $APP_DIR
+            rm /tmp/deploy.tar.gz
+            
+            # Update environment variables if needed
+            cd $APP_DIR
+            if [ ! -f .env ]; then
+              echo "Creating .env file..."
+              cat > .env << EOF
+          NODE_ENV=production
+          PORT=3333
+          HOST=127.0.0.1
+          DB_HOST=localhost
+          DB_PORT=3306
+          DB_USER=travel_api
+          DB_PASSWORD=$DB_PASSWORD
+          DB_DATABASE=travel_api_db
+          CACHE_ENABLED=true
+          CACHE_TTL_CITY_SEARCH=3600
+          CACHE_TTL_WEATHER=1800
+          OPENMETEO_BASE_URL=https://api.open-meteo.com/v1
+          OPENMETEO_GEOCODING_URL=https://geocoding-api.open-meteo.com/v1
+          OPENMETEO_TIMEOUT=5000
+          GRAPHQL_PLAYGROUND=false
+          GRAPHQL_INTROSPECTION=false
+          EOF
+            fi
+            
+            # Reload PM2 with zero downtime
+            echo "Reloading PM2..."
+            if pm2 list | grep -q "travel-api"; then
+              pm2 reload ecosystem.config.js --env production --update-env
+            else
+              pm2 start ecosystem.config.js --env production
+            fi
+            
+            # Save PM2 configuration
+            pm2 save
+            
+            echo "=== Deployment complete ==="
+          ENDSSH
+
+      - name: Health check
+        env:
+          SSH_HOST: ${{ secrets.EC2_HOST }}
+          SSH_USER: ${{ secrets.EC2_USER }}
+          HEALTH_URL: ${{ secrets.HEALTH_CHECK_URL }}
+        run: |
+          echo "Waiting for application to start..."
+          sleep 10
+          
+          # Try health check up to 5 times
+          for i in {1..5}; do
+            if curl -f -s "$HEALTH_URL/health" > /dev/null; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Health check attempt $i failed, retrying..."
+            sleep 5
+          done
+          
+          echo "Health check failed after 5 attempts"
+          
+          # Rollback on failure
+          ssh -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST << 'ENDSSH'
+            echo "Rolling back to previous version..."
+            BACKUP_DIR="/var/backups/travel-api"
+            LATEST_BACKUP=$(ls -t $BACKUP_DIR/backup_*.tar.gz | head -1)
+            if [ -f "$LATEST_BACKUP" ]; then
+              tar -xzf $LATEST_BACKUP -C /var/www/travel-api
+              pm2 reload ecosystem.config.js --env production
+              echo "Rollback complete"
+            fi
+          ENDSSH
+          
+          exit 1
+
+      - name: Cleanup old backups
+        env:
+          SSH_HOST: ${{ secrets.EC2_HOST }}
+          SSH_USER: ${{ secrets.EC2_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST << 'ENDSSH'
+            # Keep only last 5 backups
+            BACKUP_DIR="/var/backups/travel-api"
+            cd $BACKUP_DIR
+            ls -t backup_*.tar.gz | tail -n +6 | xargs -r rm
+            echo "Cleaned up old backups"
+          ENDSSH
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment successful!"
+          else
+            echo "❌ Deployment failed!"
+          fi
+```
+
+#### Required GitHub Secrets
+
+Configure these secrets in your GitHub repository settings (Settings → Secrets and variables → Actions):
+
+| Secret Name | Description | Example Value |
+|-------------|-------------|---------------|
+| `EC2_SSH_PRIVATE_KEY` | Private SSH key for EC2 access | Contents of `~/.ssh/id_rsa` |
+| `EC2_HOST` | EC2 instance public IP or domain | `54.123.45.67` or `api.yourdomain.com` |
+| `EC2_USER` | SSH username | `ec2-user` (Amazon Linux) or `ubuntu` |
+| `DB_PASSWORD` | MySQL database password | Generated secure password |
+| `HEALTH_CHECK_URL` | Application health check URL | `https://api.yourdomain.com` |
+
+#### Setting Up SSH Access
+
+**On your local machine**:
+
+```bash
+# Generate SSH key pair (if you don't have one)
+ssh-keygen -t rsa -b 4096 -C "github-actions" -f ~/.ssh/github_actions_key
+
+# Copy public key to EC2 instance
+ssh-copy-id -i ~/.ssh/github_actions_key.pub ec2-user@your-ec2-ip
+
+# Test SSH connection
+ssh -i ~/.ssh/github_actions_key ec2-user@your-ec2-ip
+
+# Copy private key content for GitHub secret
+cat ~/.ssh/github_actions_key
+```
+
+**Add to GitHub Secrets**:
+
+1. Go to repository Settings → Secrets and variables → Actions
+2. Click "New repository secret"
+3. Name: `EC2_SSH_PRIVATE_KEY`
+4. Value: Paste the entire private key content (including `-----BEGIN` and `-----END` lines)
+
+#### Deployment Workflow Explanation
+
+**Step 1: Build Application**
+
+- Installs production dependencies only
+- Compiles TypeScript to JavaScript
+- Creates optimized build artifacts
+
+**Step 2: Create Deployment Package**
+
+- Packages build artifacts, dependencies, and configuration
+- Creates compressed tarball for efficient transfer
+- Includes ecosystem.config.js for PM2
+
+**Step 3: Configure SSH**
+
+- Sets up SSH key from GitHub secrets
+- Adds EC2 host to known_hosts
+- Configures secure connection
+
+**Step 4: Deploy to EC2**
+
+- Copies deployment package to server
+- Creates timestamped backup of current version
+- Extracts new version to application directory
+- Updates environment variables if needed
+
+**Step 5: Reload PM2**
+
+- Uses `pm2 reload` for zero-downtime deployment
+- Gracefully restarts application instances
+- Maintains active connections during reload
+
+**Step 6: Health Check**
+
+- Waits for application to start (10 seconds)
+- Attempts health check up to 5 times
+- Rolls back to previous version if health check fails
+
+**Step 7: Cleanup**
+
+- Removes old backups (keeps last 5)
+- Cleans up temporary files
+- Maintains disk space
+
+#### Zero-Downtime Deployment Strategy
+
+PM2's reload command ensures zero downtime:
+
+1. PM2 starts new worker processes with updated code
+2. New workers listen on the same port
+3. Once new workers are ready, PM2 gracefully shuts down old workers
+4. Old workers finish handling active requests before shutting down
+5. No requests are dropped during the transition
+
+**PM2 Reload Process**:
+
+```
+Old Workers: [W1] [W2] [W3] [W4]  ← Handling requests
+                ↓
+New Workers: [W5] [W6] [W7] [W8]  ← Starting up
+                ↓
+Old Workers: [W1] [W2] [W3] [W4]  ← Finishing requests
+New Workers: [W5] [W6] [W7] [W8]  ← Ready, accepting requests
+                ↓
+Old Workers: Gracefully shut down
+New Workers: [W5] [W6] [W7] [W8]  ← Handling all requests
+```
+
+#### Rollback Strategy
+
+If deployment fails:
+
+1. Health check detects failure
+2. Deployment script extracts latest backup
+3. PM2 reloads with previous version
+4. Application returns to working state
+5. Team is notified of failure
+
+**Manual Rollback**:
+
+```bash
+# SSH to EC2 instance
+ssh ec2-user@your-ec2-ip
+
+# List available backups
+ls -lh /var/backups/travel-api/
+
+# Restore specific backup
+cd /var/www/travel-api
+tar -xzf /var/backups/travel-api/backup_20241120_143022.tar.gz
+
+# Reload PM2
+pm2 reload ecosystem.config.js --env production
+```
+
+#### Monitoring Deployments
+
+**View Deployment Logs**:
+
+- GitHub Actions: Repository → Actions tab
+- PM2 Logs: `pm2 logs travel-api`
+- Nginx Logs: `sudo tail -f /var/log/nginx/access.log`
+
+**Deployment Metrics**:
+
+- Deployment frequency: Track via GitHub Actions history
+- Deployment duration: Visible in Actions workflow runs
+- Success rate: Calculate from Actions history
+- Rollback frequency: Monitor failed deployments
+
+#### Best Practices
+
+**Security**:
+
+- Never commit secrets to repository
+- Use GitHub Secrets for sensitive data
+- Rotate SSH keys periodically
+- Limit SSH access to specific IPs if possible
+
+**Testing**:
+
+- Always run full test suite before deployment
+- Use staging environment for testing (future enhancement)
+- Implement smoke tests after deployment
+
+**Monitoring**:
+
+- Set up alerts for deployment failures
+- Monitor application metrics after deployment
+- Track error rates and response times
+
+**Documentation**:
+
+- Document deployment process
+- Keep runbook for common issues
+- Maintain changelog of deployments
+
+### AWS Security Group Configuration
+
+**Inbound Rules**:
+
+| Type  | Protocol | Port Range | Source          | Description                    |
+|-------|----------|------------|-----------------|--------------------------------|
+| SSH   | TCP      | 22         | Your IP/0.0.0.0/0 | SSH access                   |
+| HTTP  | TCP      | 80         | 0.0.0.0/0       | HTTP traffic (redirects to HTTPS) |
+| HTTPS | TCP      | 443        | 0.0.0.0/0       | HTTPS traffic                  |
+| MySQL | TCP      | 3306       | Security Group  | MySQL (internal only)          |
+
+**Outbound Rules**:
+
+| Type        | Protocol | Port Range | Destination | Description           |
+|-------------|----------|------------|-------------|-----------------------|
+| All traffic | All      | All        | 0.0.0.0/0   | Allow all outbound    |
+
+### Deployment Checklist
+
+**Pre-Deployment**:
+- [ ] Launch EC2 instance (t3.small or larger)
+- [ ] Attach Elastic IP to instance
+- [ ] Configure Security Group rules
+- [ ] Point domain DNS to Elastic IP
+- [ ] SSH into instance
+
+**Initial Setup**:
+- [ ] Run `setup-server.sh` script
+- [ ] Run `sudo mysql_secure_installation`
+- [ ] Run `setup-database.sh` script
+- [ ] Save database credentials securely
+
+**Application Deployment**:
+- [ ] Clone repository to `/var/www/travel-api`
+- [ ] Create `.env` file with production settings
+- [ ] Run `npm ci` and `npm run build`
+- [ ] Configure `ecosystem.config.js`
+- [ ] Start application with PM2
+
+**Web Server Configuration**:
+- [ ] Run `configure-nginx.sh` script
+- [ ] Verify Nginx configuration
+- [ ] Run `setup-ssl.sh` script
+- [ ] Test HTTPS access
+
+**Post-Deployment**:
+- [ ] Verify application is running: `pm2 status`
+- [ ] Test health endpoint: `curl https://api.yourdomain.com/health`
+- [ ] Test GraphQL endpoint
+- [ ] Monitor logs: `pm2 logs travel-api`
+- [ ] Setup monitoring and alerts
+- [ ] Configure automated backups
+
+### Monitoring and Maintenance
+
+**PM2 Monitoring**:
+
+```bash
+# View application status
+pm2 status
+
+# View logs
+pm2 logs travel-api
+
+# View metrics
+pm2 monit
+
+# Restart application
+pm2 restart travel-api
+
+# Reload with zero downtime
+pm2 reload travel-api
+```
+
+**Nginx Monitoring**:
+
+```bash
+# Check Nginx status
+sudo systemctl status nginx
+
+# View access logs
+sudo tail -f /var/log/nginx/access.log
+
+# View error logs
+sudo tail -f /var/log/nginx/error.log
+
+# Test configuration
+sudo nginx -t
+
+# Reload configuration
+sudo systemctl reload nginx
+```
+
+**MySQL Monitoring**:
+
+```bash
+# Check MySQL status
+sudo systemctl status mysqld
+
+# Connect to MySQL
+mysql -u travel_api -p travel_api_db
+
+# View slow queries
+sudo tail -f /var/log/mysql/slow-query.log
+
+# Check database size
+mysql -u travel_api -p -e "SELECT table_schema AS 'Database', 
+    ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS 'Size (MB)' 
+    FROM information_schema.tables 
+    WHERE table_schema = 'travel_api_db';"
+```
+
+**System Monitoring**:
+
+```bash
+# CPU and memory usage
+htop
+
+# Disk usage
+df -h
+
+# Network connections
+netstat -tulpn
+
+# System logs
+sudo journalctl -u nginx -f
+sudo journalctl -u mysqld -f
+```
+
+### Backup Strategy
+
+**Database Backups**:
+
+```bash
+# Create backup script
+sudo tee /usr/local/bin/backup-db.sh > /dev/null << 'EOF'
+#!/bin/bash
+BACKUP_DIR="/var/backups/mysql"
+DATE=$(date +%Y%m%d_%H%M%S)
+mkdir -p $BACKUP_DIR
+
+mysqldump -u travel_api -p${DB_PASSWORD} travel_api_db | gzip > $BACKUP_DIR/travel_api_db_$DATE.sql.gz
+
+# Keep only last 7 days of backups
+find $BACKUP_DIR -name "*.sql.gz" -mtime +7 -delete
+EOF
+
+sudo chmod +x /usr/local/bin/backup-db.sh
+
+# Add to crontab (daily at 2 AM)
+echo "0 2 * * * root /usr/local/bin/backup-db.sh" | sudo tee /etc/cron.d/backup-db
+```
+
+**Application Backups**:
+
+- Code: Stored in Git repository
+- Configuration: Backup `.env` and `ecosystem.config.js` securely
+- Logs: Rotate and archive with logrotate
+
+### Disaster Recovery
+
+**Recovery Steps**:
+
+1. Launch new EC2 instance
+2. Run setup scripts
+3. Restore database from backup
+4. Deploy application code
+5. Update DNS to point to new instance
+6. Verify functionality
+
+**RTO (Recovery Time Objective)**: 30 minutes
+**RPO (Recovery Point Objective)**: 24 hours (daily backups)
 
 ## README Specification
 

@@ -1,6 +1,8 @@
 import { IWeatherClient } from '#clients/interfaces/weather_client_interface'
 import { ICacheManager } from '#clients/interfaces/cache_manager_interface'
+import { IMetrics } from '#clients/interfaces/metrics_interface'
 import { City } from '#models/city'
+import logger from '@adonisjs/core/services/logger'
 
 /**
  * Service for city search operations.
@@ -12,7 +14,8 @@ export class CityService {
 
   constructor(
     private readonly weatherClient: IWeatherClient,
-    private readonly cacheManager: ICacheManager
+    private readonly cacheManager: ICacheManager,
+    private readonly metrics: IMetrics
   ) {}
 
   /**
@@ -23,8 +26,15 @@ export class CityService {
    * @returns Array of matching cities ordered by relevance
    */
   async searchCities(query: string, limit: number = 10): Promise<City[]> {
+    const startTime = Date.now()
+
+    logger.info({ query, limit }, 'City search requested')
+    this.metrics.incrementCounter('city.search.requests')
+
     // Handle empty query - return empty array per requirements 1.3
     if (!query || query.trim().length === 0) {
+      logger.debug('Empty query provided, returning empty results')
+      this.metrics.incrementCounter('city.search.empty_query')
       return []
     }
 
@@ -33,6 +43,8 @@ export class CityService {
 
     // Return empty array if sanitization results in empty string
     if (sanitizedQuery.length === 0) {
+      logger.debug({ originalQuery: query }, 'Query sanitization resulted in empty string')
+      this.metrics.incrementCounter('city.search.invalid_query')
       return []
     }
 
@@ -42,18 +54,46 @@ export class CityService {
     // Check cache first
     const cachedResults = await this.cacheManager.get<City[]>(cacheKey)
     if (cachedResults) {
+      logger.info(
+        { query: sanitizedQuery, resultCount: cachedResults.length },
+        'City search cache hit'
+      )
+      this.metrics.incrementCounter('city.search.cache_hit')
+
+      const duration = Date.now() - startTime
+      this.metrics.recordTiming('city.search.duration', duration, { cache: 'hit' })
+
       // Return limited results from cache
       return cachedResults.slice(0, limit)
     }
 
+    logger.info({ query: sanitizedQuery }, 'City search cache miss, fetching from API')
+    this.metrics.incrementCounter('city.search.cache_miss')
+
     // Cache miss - fetch from API
+    const apiStartTime = Date.now()
     const cities = await this.weatherClient.searchCities(sanitizedQuery)
+    const apiDuration = Date.now() - apiStartTime
+
+    logger.info(
+      { query: sanitizedQuery, resultCount: cities.length, apiDuration },
+      'City search API call completed'
+    )
+    this.metrics.recordTiming('city.search.api_call', apiDuration)
 
     // Order results by relevance
     const orderedCities = this.orderByRelevance(cities, sanitizedQuery)
 
     // Cache the ordered results
     await this.cacheManager.set(cacheKey, orderedCities, this.CACHE_TTL_SECONDS)
+
+    const totalDuration = Date.now() - startTime
+    this.metrics.recordTiming('city.search.duration', totalDuration, { cache: 'miss' })
+
+    logger.info(
+      { query: sanitizedQuery, resultCount: orderedCities.length, totalDuration },
+      'City search completed'
+    )
 
     // Return limited results
     return orderedCities.slice(0, limit)

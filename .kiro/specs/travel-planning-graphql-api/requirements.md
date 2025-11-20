@@ -116,6 +116,40 @@ The primary goal is to demonstrate clean architecture, thoughtful schema design,
 4. WHEN considering production deployment, THE documentation SHALL outline deployment strategies and infrastructure requirements
 5. WHERE caching is implemented, THE system SHALL provide configuration options for cache TTL and invalidation strategies
 
+### Requirement 12
+
+**User Story:** As a DevOps engineer, I want automated CI/CD pipelines that deploy to AWS EC2 with PM2, so that code changes are automatically tested and deployed to production with minimal manual intervention.
+
+#### Acceptance Criteria
+
+1. WHEN code is pushed to the main branch, THE CI/CD pipeline SHALL automatically build, test, and deploy the application to the production EC2 instance
+2. WHEN the deployment workflow executes, THE system SHALL connect to the EC2 instance via SSH using secure credentials
+3. WHEN deploying to EC2, THE deployment process SHALL pull the latest code, install dependencies, build the application, and reload PM2 with zero downtime
+4. WHEN the CI pipeline runs, THE system SHALL execute all linting, type-checking, and test jobs in parallel for faster feedback
+5. WHEN deployment completes, THE system SHALL verify the application health endpoint responds successfully
+6. WHEN deployment fails, THE system SHALL preserve the previous working version and notify the team
+7. WHEN GitHub Actions workflows are configured, THE system SHALL use environment secrets for sensitive credentials (SSH keys, database passwords)
+8. WHEN the deployment script executes, THE system SHALL create timestamped backups before deploying new code
+9. WHEN PM2 reloads the application, THE system SHALL use graceful reload to avoid dropping active connections
+10. WHEN the deployment is complete, THE CI/CD pipeline SHALL report deployment status and application metrics
+
+### Requirement 11
+
+**User Story:** As a DevOps engineer, I want to deploy the API to an AWS EC2 Linux instance with production-grade infrastructure, so that the application runs reliably and securely in a cloud environment.
+
+#### Acceptance Criteria
+
+1. WHEN deploying to AWS EC2, THE deployment configuration SHALL include setup scripts for Amazon Linux 2 or Ubuntu Server
+2. WHEN the application is deployed, THE system SHALL use PM2 as the process manager to ensure high availability and automatic restarts
+3. WHEN configuring the web server, THE system SHALL use Nginx as a reverse proxy to handle SSL termination and load balancing
+4. WHEN securing the application, THE deployment SHALL use Certbot to obtain and auto-renew SSL certificates from Let's Encrypt
+5. WHEN the application requires persistent data storage, THE system SHALL integrate with MySQL database for caching and data persistence
+6. WHEN the deployment scripts execute, THE system SHALL automate the installation and configuration of Node.js, PM2, Nginx, Certbot, and MySQL
+7. WHEN Nginx is configured, THE reverse proxy SHALL forward requests to the PM2-managed application instances
+8. WHEN MySQL is configured, THE system SHALL create necessary databases, users, and grant appropriate permissions
+9. WHEN SSL certificates are obtained, THE Nginx configuration SHALL redirect HTTP traffic to HTTPS
+10. WHEN the deployment is complete, THE system SHALL provide health check endpoints accessible through Nginx
+
 ### Requirement 9
 
 **User Story:** As a system architect, I want the OpenMeteo Client to be a reusable, well-abstracted component, so that it can be easily tested, mocked, and potentially replaced.

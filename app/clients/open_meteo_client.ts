@@ -9,6 +9,7 @@ import {
   OpenMeteoCityResult,
 } from '#types/open_meteo_types'
 import openmeteoConfig from '#config/openmeteo'
+import logger from '@adonisjs/core/services/logger'
 
 /**
  * Client for communicating with the OpenMeteo API.
@@ -42,6 +43,9 @@ export class OpenMeteoClient implements IWeatherClient {
    */
   async searchCities(query: string): Promise<City[]> {
     const endpoint = `${this.geocodingUrl}/search`
+    const startTime = Date.now()
+
+    logger.debug({ query, endpoint }, 'OpenMeteo geocoding API call starting')
 
     try {
       const response = await this.httpClient.get<OpenMeteoGeocodingResponse>(endpoint, {
@@ -53,6 +57,14 @@ export class OpenMeteoClient implements IWeatherClient {
         },
       })
 
+      const duration = Date.now() - startTime
+      const resultCount = response.data.results?.length || 0
+
+      logger.info(
+        { query, endpoint, duration, resultCount, status: response.status },
+        'OpenMeteo geocoding API call successful'
+      )
+
       // Handle empty results
       if (!response.data.results || response.data.results.length === 0) {
         return []
@@ -61,6 +73,8 @@ export class OpenMeteoClient implements IWeatherClient {
       // Transform API results to City domain models
       return response.data.results.map((result) => this.transformCityResult(result))
     } catch (error) {
+      const duration = Date.now() - startTime
+      logger.error({ query, endpoint, duration, error }, 'OpenMeteo geocoding API call failed')
       throw this.handleApiError(error, endpoint)
     }
   }
@@ -80,6 +94,9 @@ export class OpenMeteoClient implements IWeatherClient {
     days: number
   ): Promise<WeatherForecast> {
     const endpoint = `${this.baseUrl}/forecast`
+    const startTime = Date.now()
+
+    logger.debug({ latitude, longitude, days, endpoint }, 'OpenMeteo weather API call starting')
 
     try {
       const response = await this.httpClient.get<OpenMeteoWeatherResponse>(endpoint, {
@@ -92,6 +109,13 @@ export class OpenMeteoClient implements IWeatherClient {
           timezone: 'auto',
         },
       })
+
+      const duration = Date.now() - startTime
+
+      logger.info(
+        { latitude, longitude, days, endpoint, duration, status: response.status },
+        'OpenMeteo weather API call successful'
+      )
 
       // Validate response structure
       if (!response.data || !response.data.daily) {
@@ -135,6 +159,12 @@ export class OpenMeteoClient implements IWeatherClient {
       // Transform API response to domain models
       return this.transformWeatherResponse(response.data)
     } catch (error) {
+      const duration = Date.now() - startTime
+      logger.error(
+        { latitude, longitude, days, endpoint, duration, error },
+        'OpenMeteo weather API call failed'
+      )
+
       // Re-throw WeatherAPIException as-is
       if (error instanceof WeatherAPIException) {
         throw error

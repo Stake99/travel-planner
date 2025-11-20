@@ -1,4 +1,5 @@
 import type { ICacheManager } from './interfaces/cache_manager_interface.js'
+import logger from '@adonisjs/core/services/logger'
 
 /**
  * Internal cache entry structure with expiration tracking
@@ -41,14 +42,17 @@ export default class CacheManager implements ICacheManager {
     const entry = this.cache.get(key)
 
     if (!entry) {
+      logger.debug({ key }, 'Cache miss - key not found')
       return null
     }
 
     if (this.isExpired(entry)) {
+      logger.debug({ key }, 'Cache miss - entry expired')
       this.cache.delete(key)
       return null
     }
 
+    logger.debug({ key }, 'Cache hit')
     return entry.value as T
   }
 
@@ -68,8 +72,11 @@ export default class CacheManager implements ICacheManager {
       expiresAt,
     })
 
+    logger.debug({ key, ttlSeconds, cacheSize: this.cache.size }, 'Cache entry stored')
+
     // Trigger cleanup if cache is getting too large
     if (this.cache.size > this.maxSize) {
+      logger.info({ cacheSize: this.cache.size, maxSize: this.maxSize }, 'Cache cleanup triggered')
       this.cleanup()
     }
   }
@@ -106,12 +113,20 @@ export default class CacheManager implements ICacheManager {
    */
   private cleanup(): void {
     const now = Date.now()
+    const sizeBefore = this.cache.size
+    let removedCount = 0
 
     for (const [key, entry] of this.cache.entries()) {
       if (now > entry.expiresAt) {
         this.cache.delete(key)
+        removedCount++
       }
     }
+
+    logger.info(
+      { sizeBefore, sizeAfter: this.cache.size, removedCount },
+      'Cache cleanup completed'
+    )
   }
 
   /**

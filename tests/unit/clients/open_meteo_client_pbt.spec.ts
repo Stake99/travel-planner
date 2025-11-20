@@ -105,10 +105,15 @@ test.group('OpenMeteoClient - Property-Based Tests', () => {
           timezone_abbreviation: fc.string({ minLength: 1, maxLength: 10 }),
           elevation: fc.float({ noNaN: true }),
           daily: fc.record({
-            time: fc.array(fc.date().map((d) => d.toISOString().split('T')[0]), {
-              minLength: 1,
-              maxLength: 16,
-            }),
+            time: fc.array(
+              fc
+                .integer({ min: 946684800000, max: 4133894400000 }) // 2000-01-01 to 2100-12-31 in ms
+                .map((timestamp) => new Date(timestamp).toISOString().split('T')[0]),
+              {
+                minLength: 1,
+                maxLength: 16,
+              }
+            ),
             temperature_2m_max: fc.array(fc.float({ min: -50, max: 50, noNaN: true }), {
               minLength: 1,
               maxLength: 16,

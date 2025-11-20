@@ -1,0 +1,214 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Create deployment package
+        run: |
+          mkdir -p deploy
+          cp -r build deploy/
+          cp package*.json deploy/
+          cp ecosystem.config.js deploy/
+          cp .env.example deploy/.env.example
+          cd deploy
+          tar -czf ../deploy.tar.gz .
+          cd ..
+          rm -rf deploy
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create timestamped backup on EC2
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            BACKUP_DIR="/var/www/travel-planner/backups"
+            APP_DIR="/var/www/travel-planner/current"
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            
+            # Create backup directory if it doesn't exist
+            mkdir -p $BACKUP_DIR
+            
+            # Create backup if current deployment exists
+            if [ -d "$APP_DIR" ]; then
+              echo "Creating backup: backup_$TIMESTAMP"
+              tar -czf $BACKUP_DIR/backup_$TIMESTAMP.tar.gz -C /var/www/travel-planner current
+              echo "Backup created successfully"
+            else
+              echo "No existing deployment to backup"
+            fi
+            
+            # Keep only last 5 backups
+            cd $BACKUP_DIR
+            ls -t backup_*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm
+            echo "Cleaned up old backups, keeping last 5"
+          EOF
+
+      - name: Upload deployment package
+        run: |
+          scp -i ~/.ssh/deploy_key deploy.tar.gz ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/
+
+      - name: Deploy application
+        id: deploy
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+            
+            APP_DIR="/var/www/travel-planner/current"
+            
+            # Create application directory if it doesn't exist
+            mkdir -p $APP_DIR
+            
+            # Extract new deployment
+            cd $APP_DIR
+            tar -xzf /tmp/deploy.tar.gz
+            rm /tmp/deploy.tar.gz
+            
+            # Install production dependencies
+            npm ci --production
+            
+            # Set up environment variables
+            if [ ! -f .env ]; then
+              cp .env.example .env
+              echo "Created .env file from template"
+            fi
+            
+            # Update environment variables from secrets
+            sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${{ secrets.DB_PASSWORD }}/" .env
+            
+            echo "Deployment files updated successfully"
+          EOF
+
+      - name: Reload PM2 with zero-downtime
+        id: pm2_reload
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+            
+            cd /var/www/travel-planner/current
+            
+            # Check if PM2 process exists
+            if pm2 list | grep -q "travel-planner-api"; then
+              echo "Reloading existing PM2 process"
+              pm2 reload ecosystem.config.js --env production --update-env
+            else
+              echo "Starting new PM2 process"
+              pm2 start ecosystem.config.js --env production
+            fi
+            
+            # Save PM2 process list
+            pm2 save
+            
+            echo "PM2 reload completed"
+          EOF
+
+      - name: Wait for application startup
+        run: sleep 10
+
+      - name: Health check
+        id: health_check
+        run: |
+          HEALTH_URL="${{ secrets.HEALTH_CHECK_URL }}"
+          MAX_ATTEMPTS=5
+          ATTEMPT=1
+          
+          echo "Performing health check on $HEALTH_URL"
+          
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "Health check attempt $ATTEMPT of $MAX_ATTEMPTS"
+            
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $HEALTH_URL || echo "000")
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Health check passed! Application is running."
+              exit 0
+            fi
+            
+            echo "Health check failed with HTTP code: $HTTP_CODE"
+            ATTEMPT=$((ATTEMPT + 1))
+            
+            if [ $ATTEMPT -le $MAX_ATTEMPTS ]; then
+              echo "Waiting 10 seconds before retry..."
+              sleep 10
+            fi
+          done
+          
+          echo "Health check failed after $MAX_ATTEMPTS attempts"
+          exit 1
+
+      - name: Rollback on failure
+        if: failure() && (steps.deploy.outcome == 'success' || steps.pm2_reload.outcome == 'success')
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+            
+            BACKUP_DIR="/var/www/travel-planner/backups"
+            APP_DIR="/var/www/travel-planner/current"
+            
+            # Find the most recent backup
+            LATEST_BACKUP=$(ls -t $BACKUP_DIR/backup_*.tar.gz 2>/dev/null | head -n 1)
+            
+            if [ -n "$LATEST_BACKUP" ]; then
+              echo "Rolling back to: $LATEST_BACKUP"
+              
+              # Remove failed deployment
+              rm -rf $APP_DIR/*
+              
+              # Restore from backup
+              tar -xzf $LATEST_BACKUP -C /var/www/travel-planner
+              
+              # Reload PM2
+              cd $APP_DIR
+              pm2 reload ecosystem.config.js --env production
+              
+              echo "Rollback completed successfully"
+            else
+              echo "No backup found for rollback"
+              exit 1
+            fi
+          EOF
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "✅ Deployment completed successfully"
+          echo "🚀 Application is running and healthy"
+          echo "📊 Health check URL: ${{ secrets.HEALTH_CHECK_URL }}"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed"
+          echo "🔄 Automatic rollback was attempted"
+          echo "Please check the logs and EC2 instance status"

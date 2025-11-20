@@ -1,0 +1,98 @@
+# Enums
+enum ActivityType {
+  SKIING
+  SURFING
+  INDOOR_SIGHTSEEING
+  OUTDOOR_SIGHTSEEING
+}
+
+enum Suitability {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+}
+
+enum WeatherCondition {
+  CLEAR
+  PARTLY_CLOUDY
+  CLOUDY
+  RAINY
+  SNOWY
+  STORMY
+}
+
+# Types
+type City {
+  id: Int!
+  name: String!
+  country: String!
+  countryCode: String!
+  latitude: Float!
+  longitude: Float!
+  timezone: String!
+  population: Int
+}
+
+type DailyForecast {
+  date: String!
+  temperatureMax: Float!
+  temperatureMin: Float!
+  precipitation: Float!
+  windSpeed: Float!
+  weatherCondition: WeatherCondition!
+}
+
+type WeatherForecast {
+  latitude: Float!
+  longitude: Float!
+  timezone: String!
+  dailyForecasts: [DailyForecast!]!
+}
+
+type RankedActivity {
+  type: ActivityType!
+  score: Float!
+  suitability: Suitability!
+  reason: String!
+}
+
+type ActivityRecommendations {
+  city: City!
+  forecast: WeatherForecast!
+  activities: [RankedActivity!]!
+  generatedAt: String!
+}
+
+# Input Types
+input WeatherForecastInput {
+  latitude: Float!
+  longitude: Float!
+  days: Int = 7
+}
+
+# Queries
+type Query {
+  """
+  Search for cities by name (partial or complete match)
+  Returns up to 10 results by default
+  """
+  searchCities(query: String!, limit: Int = 10): [City!]!
+
+  """
+  Get weather forecast for specific coordinates
+  """
+  getWeatherForecast(input: WeatherForecastInput!): WeatherForecast!
+
+  """
+  Get activity recommendations based on weather forecast
+  """
+  getActivityRecommendations(cityId: Int!, days: Int = 7): ActivityRecommendations!
+}
+
+# Error Types
+type Error {
+  message: String!
+  code: String!
+  path: [String!]
+}
