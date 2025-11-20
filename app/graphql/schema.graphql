@@ -71,6 +71,13 @@ input WeatherForecastInput {
   days: Int = 7
 }
 
+input ActivityRecommendationsInput {
+  latitude: Float!
+  longitude: Float!
+  cityName: String
+  country: String
+}
+
 # Queries
 type Query {
   """
@@ -88,6 +95,11 @@ type Query {
   Get activity recommendations based on weather forecast
   """
   getActivityRecommendations(cityId: Int!, days: Int = 7): ActivityRecommendations!
+
+  """
+  Get activity recommendations based on coordinates (alternative to cityId)
+  """
+  getActivityRecommendationsByCoordinates(input: ActivityRecommendationsInput!, days: Int = 7): ActivityRecommendations!
 }
 
 # Error Types

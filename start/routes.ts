@@ -1,16 +1,20 @@
 /*
-|--------------------------------------------------------------------------
-| Routes file
-|--------------------------------------------------------------------------
-|
-| The routes file is used for defining the HTTP routes.
-|
+||--------------------------------------------------------------------------
+|| Routes file
+||--------------------------------------------------------------------------
+||
+|| The routes file is used for defining the HTTP routes.
+||
 */
 
 import router from '@adonisjs/core/services/router'
+import type { HttpContext } from '@adonisjs/core/http'
 import { createApolloServer } from '#graphql/server'
 import graphqlConfig from '#config/graphql'
 import type { ApolloServer } from '@apollo/server'
+
+// Version prefix for API routes
+const versionPrefix = '/v1/api'
 
 // Lazy-load Apollo Server instance
 let apolloServer: ApolloServer | null = null
@@ -25,6 +29,10 @@ async function getApolloServer() {
   }
   return apolloServer
 }
+
+// ============================================================================
+// Public Routes (No Authentication Required)
+// ============================================================================
 
 // Health check endpoint
 router.get('/health', async () => {
@@ -42,23 +50,45 @@ router.get('/', async () => {
     message: 'Travel Planning GraphQL API',
     version: '1.0.0',
     endpoints: {
-      graphql: graphqlConfig.path,
+      graphql: `${versionPrefix}/graphql`,
+      apolloStudio: 'https://studio.apollographql.com/sandbox/explorer',
       health: '/health',
+      api: versionPrefix,
     },
   }
 })
 
-// GraphQL endpoint
-router.post(graphqlConfig.path, async ({ request, response }) => {
+// ============================================================================
+// GraphQL Routes (Versioned)
+// ============================================================================
+
+// GraphQL POST endpoint - Accepts JSON requests from Postman/curl
+router.post(`${versionPrefix}/graphql`, async ({ request, response }: HttpContext) => {
   try {
-    const { query, variables, operationName } = request.body()
+    // Parse JSON body (bodyparser middleware handles this)
+    const body = request.body()
+    const { query, variables, operationName } = body
+
+    if (!query) {
+      return response.status(400).json({
+        errors: [
+          {
+            message: 'Must provide query string',
+            extensions: {
+              code: 'BAD_REQUEST',
+            },
+          },
+        ],
+      })
+    }
+
     const server = await getApolloServer()
 
     const result = await server.executeOperation(
       {
         query,
-        variables,
-        operationName,
+        variables: variables || {},
+        operationName: operationName || undefined,
       },
       {
         contextValue: {},
@@ -85,8 +115,8 @@ router.post(graphqlConfig.path, async ({ request, response }) => {
   }
 })
 
-// GraphQL GET endpoint for introspection queries and simple queries
-router.get(graphqlConfig.path, async ({ request, response }) => {
+// GraphQL GET endpoint for introspection (used by Apollo Studio)
+router.get(`${versionPrefix}/graphql`, async ({ request, response }: HttpContext) => {
   try {
     const query = request.qs().query as string
     const variables = request.qs().variables
@@ -94,94 +124,13 @@ router.get(graphqlConfig.path, async ({ request, response }) => {
       : undefined
     const operationName = request.qs().operationName as string | undefined
 
+    // If no query, return helpful message (Apollo Studio will handle introspection)
     if (!query) {
-      // Return GraphQL Playground HTML if enabled
-      if (graphqlConfig.playgroundEnabled) {
-        return response.header('Content-Type', 'text/html').send(`
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>GraphQL Playground</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-    }
-    #root {
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #1a1a1a;
-      color: #fff;
-    }
-    h1 {
-      margin-bottom: 1rem;
-    }
-    .info {
-      max-width: 600px;
-      padding: 2rem;
-      background: #2a2a2a;
-      border-radius: 8px;
-    }
-    code {
-      background: #3a3a3a;
-      padding: 0.2rem 0.4rem;
-      border-radius: 4px;
-      font-family: 'Courier New', monospace;
-    }
-    pre {
-      background: #3a3a3a;
-      padding: 1rem;
-      border-radius: 4px;
-      overflow-x: auto;
-    }
-    a {
-      color: #61dafb;
-      text-decoration: none;
-    }
-    a:hover {
-      text-decoration: underline;
-    }
-  </style>
-</head>
-<body>
-  <div id="root">
-    <div class="info">
-      <h1>🚀 GraphQL API Ready</h1>
-      <p>Welcome to the Travel Planning GraphQL API!</p>
-      <p>To interact with the API, you can:</p>
-      <ul>
-        <li>Use a GraphQL client like <a href="https://www.apollographql.com/docs/graphos/explorer/" target="_blank">Apollo Studio</a></li>
-        <li>Use <a href="https://insomnia.rest/" target="_blank">Insomnia</a> or <a href="https://www.postman.com/" target="_blank">Postman</a></li>
-        <li>Send POST requests to <code>${graphqlConfig.path}</code></li>
-      </ul>
-      <h3>Example Query:</h3>
-      <pre>query {
-  searchCities(query: "London", limit: 5) {
-    id
-    name
-    country
-    latitude
-    longitude
-  }
-}</pre>
-      <p>Send this query as a POST request with JSON body:</p>
-      <pre>{ "query": "query { ... }" }</pre>
-    </div>
-  </div>
-</body>
-</html>
-        `)
-      }
-
       return response.status(400).json({
         errors: [
           {
-            message: 'Must provide query string',
+            message:
+              'Must provide query string. Use Apollo Studio at https://studio.apollographql.com/sandbox/explorer',
             extensions: {
               code: 'BAD_REQUEST',
             },
@@ -190,12 +139,13 @@ router.get(graphqlConfig.path, async ({ request, response }) => {
       })
     }
 
+    // Execute GraphQL query from query string
     const server = await getApolloServer()
     const result = await server.executeOperation(
       {
         query,
-        variables,
-        operationName,
+        variables: variables || {},
+        operationName: operationName || undefined,
       },
       {
         contextValue: {},
@@ -220,3 +170,30 @@ router.get(graphqlConfig.path, async ({ request, response }) => {
     })
   }
 })
+
+// ============================================================================
+// API Routes (Versioned with /v1/api prefix)
+// ============================================================================
+
+// Example: City routes (can be expanded with controllers)
+// router.get(`${versionPrefix}/cities`, async ({ request, response }: HttpContext) => {
+//   // This is a placeholder - you can create a CitiesController later
+//   return response.json({
+//     message: 'Cities endpoint - implement with CitiesController',
+//     query: request.qs(),
+//   })
+// })
+
+// Example: Weather routes (can be expanded with controllers)
+// router.get(`${versionPrefix}/weather`, async ({ request, response }: HttpContext) => {
+//   // This is a placeholder - you can create a WeatherController later
+//   return response.json({
+//     message: 'Weather endpoint - implement with WeatherController',
+//     query: request.qs(),
+//   })
+// })
+
+// Example route structure with middleware (as requested)
+// router.post(`${versionPrefix}/schedules`, async (context: HttpContext) => {
+//   return new SchedulesController().store(context)
+// }).use(middleware.auth()).use(middleware.role(['admin', 'Ops']))

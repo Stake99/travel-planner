@@ -14,5 +14,5 @@ export default {
   /**
    * GraphQL endpoint path
    */
-  path: '/graphql',
+  path: '/v1/api/graphql',
 }

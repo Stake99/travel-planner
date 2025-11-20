@@ -56,6 +56,22 @@ export function createResolverMap(
 
       getActivityRecommendations: (parent: unknown, args: any, context: any) =>
         resolvers.activityResolver.getActivityRecommendations(parent, args, context),
+
+      getActivityRecommendationsByCoordinates: (parent: unknown, args: any, context: any) =>
+        resolvers.activityResolver.getActivityRecommendationsByCoordinates(parent, args),
+    },
+    DailyForecast: {
+      weatherCondition: (parent: any) => {
+        // parent is a DailyForecast instance, call getWeatherCondition() method
+        return parent.getWeatherCondition()
+      },
+      date: (parent: any) => {
+        // Convert Date object to ISO string for GraphQL
+        if (parent.date instanceof Date) {
+          return parent.date.toISOString().split('T')[0]
+        }
+        return parent.date
+      },
     },
   }
 }
