@@ -27,5 +27,30 @@ export default await Env.create(new URL('../', import.meta.url), {
   DB_PORT: Env.schema.number(),
   DB_USER: Env.schema.string(),
   DB_PASSWORD: Env.schema.string.optional(),
-  DB_DATABASE: Env.schema.string()
+  DB_DATABASE: Env.schema.string(),
+
+  /*
+  |----------------------------------------------------------
+  | Variables for configuring GraphQL
+  |----------------------------------------------------------
+  */
+  GRAPHQL_PLAYGROUND_ENABLED: Env.schema.boolean.optional(),
+  GRAPHQL_INTROSPECTION_ENABLED: Env.schema.boolean.optional(),
+
+  /*
+  |----------------------------------------------------------
+  | Variables for configuring cache
+  |----------------------------------------------------------
+  */
+  CACHE_TTL_CITY_SEARCH: Env.schema.number.optional(),
+  CACHE_TTL_WEATHER_FORECAST: Env.schema.number.optional(),
+
+  /*
+  |----------------------------------------------------------
+  | Variables for configuring OpenMeteo API
+  |----------------------------------------------------------
+  */
+  OPENMETEO_BASE_URL: Env.schema.string.optional(),
+  OPENMETEO_GEOCODING_URL: Env.schema.string.optional(),
+  OPENMETEO_TIMEOUT: Env.schema.number.optional(),
 })
