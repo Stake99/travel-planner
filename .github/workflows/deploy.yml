@@ -1,72 +1,73 @@
 name: Deploy to EC2
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types:
-      - completed
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
-    # Only run if CI workflow completed successfully
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    name: Deploy to Production
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download build artifact from CI
-        uses: actions/download-artifact@v4
-        with:
-          name: build-artifact
-          path: build/
-
       - name: Setup SSH key
         run: |
           echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > key.pem
           chmod 600 key.pem
 
-      - name: Deploy build to EC2 using rsync
-        run: |
-          rsync -avz --delete \
-            -e "ssh -o StrictHostKeyChecking=no -i key.pem" \
-            build/ \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/travel-planner/build/
-
-      - name: Restart application on EC2
+      - name: Deploy to EC2
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem \
           ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
-            cd ~/travel-planner
+            
+            echo '--- Switching to travel-planner directory ---'
+            cd ~/travel-planner || exit 1
+
+            echo '--- Pulling latest code ---'
+            git pull origin main
 
             echo '--- Installing Node v24.11.1 ---'
             curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
             sudo apt-get install -y nodejs
 
-            echo '--- Installing production dependencies ---'
-            npm install --production
+            echo 'Node version: $(node -v)'
+            echo 'NPM version: $(npm -v)'
+
+            echo '--- Cleaning dependencies ---'
+            rm -rf node_modules package-lock.json
+
+            echo '--- Installing dependencies ---'
+            npm install
 
             echo '--- Restarting PM2 app ---'
             pm2 restart travel-planner || pm2 start ecosystem.config.js --name travel-planner
 
-            echo '--- Restarting Nginx ---'
+            echo '--- Starting Nginx (if required) ---'
             sudo systemctl restart nginx
 
-            echo '--- Renewing SSL certificates ---'
+            echo '--- Attempting certbot renew ---'
             sudo certbot renew --quiet
+
+            echo '--- Deployment steps finished ---'
           "
 
       - name: Health Check
         run: |
-          echo "Waiting for API..."
+          echo "Waiting for API to come up..."
           sleep 10
 
+          echo "Checking health endpoint..."
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.DOMAIN }}/health)
+
           if [ "$STATUS" -ne 200 ]; then
             echo "Health check FAILED with status $STATUS"
             exit 1
           else
-            echo "Health check PASSED ✔"
+            echo "Health check PASSED ✔ Service is healthy."
           fi
+
 
