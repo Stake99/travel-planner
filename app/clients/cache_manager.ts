@@ -122,10 +122,7 @@ export default class CacheManager implements ICacheManager {
       }
     }
 
-    logger.info(
-      { sizeBefore, sizeAfter: this.cache.size, removedCount },
-      'Cache cleanup completed'
-    )
+    logger.info({ sizeBefore, sizeAfter: this.cache.size, removedCount }, 'Cache cleanup completed')
   }
 
   /**

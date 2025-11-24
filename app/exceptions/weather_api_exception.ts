@@ -54,11 +54,7 @@ export default class WeatherAPIException extends AppError {
    * Create a WeatherAPIException for network errors
    */
   static networkError(originalError: Error, endpoint: string): WeatherAPIException {
-    return new WeatherAPIException(
-      'Unable to connect to OpenMeteo API',
-      originalError,
-      endpoint
-    )
+    return new WeatherAPIException('Unable to connect to OpenMeteo API', originalError, endpoint)
   }
 
   /**

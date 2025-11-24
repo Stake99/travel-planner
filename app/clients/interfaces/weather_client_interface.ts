@@ -5,6 +5,7 @@ import { WeatherForecast } from '#models/weather'
  * Interface for weather and geocoding client operations.
  * Abstracts external API communication to enable testing and potential provider switching.
  */
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export interface IWeatherClient {
   /**
    * Search for cities by name (partial or complete match).

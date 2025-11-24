@@ -5,7 +5,7 @@ import { WeatherService } from '#services/weather_service'
 import { IWeatherClient } from '#clients/interfaces/weather_client_interface'
 import { ICacheManager } from '#clients/interfaces/cache_manager_interface'
 import { WeatherForecast, DailyForecast } from '#models/weather'
-import { ActivityType, WeatherCondition } from '#types/enums'
+import { ActivityType } from '#types/enums'
 import { createMockMetrics } from '../helpers/mock_metrics.js'
 
 test.group('ActivityRankingService - Property Tests', () => {
@@ -25,7 +25,11 @@ test.group('ActivityRankingService - Property Tests', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
     weatherService.getWeatherForecast = async () => forecast
 
     return weatherService
@@ -47,15 +51,17 @@ test.group('ActivityRankingService - Property Tests', () => {
         fc.integer({ min: 1, max: 7 }), // Number of days
         async (temperature, precipitation, numDays) => {
           // Create forecast with snowy cold conditions
-          const dailyForecasts = Array.from({ length: numDays }, (_, i) =>
-            new DailyForecast({
-              date: new Date(Date.now() + i * 24 * 60 * 60 * 1000),
-              temperatureMax: temperature,
-              temperatureMin: temperature - 5,
-              precipitation,
-              windSpeed: fc.sample(fc.float({ min: 0, max: 30 }), 1)[0],
-              weatherCode: fc.sample(fc.integer({ min: 71, max: 77 }), 1)[0], // Snow codes
-            })
+          const dailyForecasts = Array.from(
+            { length: numDays },
+            (_, i) =>
+              new DailyForecast({
+                date: new Date(Date.now() + i * 24 * 60 * 60 * 1000),
+                temperatureMax: temperature,
+                temperatureMin: temperature - 5,
+                precipitation,
+                windSpeed: fc.sample(fc.float({ min: 0, max: 30 }), 1)[0],
+                weatherCode: fc.sample(fc.integer({ min: 71, max: 77 }), 1)[0], // Snow codes
+              })
           )
 
           const forecast = new WeatherForecast({
@@ -106,15 +112,17 @@ test.group('ActivityRankingService - Property Tests', () => {
         fc.integer({ min: 1, max: 7 }), // Number of days
         async (temperature, precipitation, numDays) => {
           // Create forecast with warm dry conditions
-          const dailyForecasts = Array.from({ length: numDays }, (_, i) =>
-            new DailyForecast({
-              date: new Date(Date.now() + i * 24 * 60 * 60 * 1000),
-              temperatureMax: temperature,
-              temperatureMin: temperature - 5,
-              precipitation,
-              windSpeed: fc.sample(fc.float({ min: 0, max: 25 }), 1)[0],
-              weatherCode: fc.sample(fc.integer({ min: 0, max: 3 }), 1)[0], // Clear/partly cloudy
-            })
+          const dailyForecasts = Array.from(
+            { length: numDays },
+            (_, i) =>
+              new DailyForecast({
+                date: new Date(Date.now() + i * 24 * 60 * 60 * 1000),
+                temperatureMax: temperature,
+                temperatureMin: temperature - 5,
+                precipitation,
+                windSpeed: fc.sample(fc.float({ min: 0, max: 25 }), 1)[0],
+                weatherCode: fc.sample(fc.integer({ min: 0, max: 3 }), 1)[0], // Clear/partly cloudy
+              })
           )
 
           const forecast = new WeatherForecast({
@@ -132,12 +140,8 @@ test.group('ActivityRankingService - Property Tests', () => {
 
           // Find activities
           const surfing = result.find((a) => a.type === ActivityType.SURFING)
-          const outdoorSightseeing = result.find(
-            (a) => a.type === ActivityType.OUTDOOR_SIGHTSEEING
-          )
-          const indoorSightseeing = result.find(
-            (a) => a.type === ActivityType.INDOOR_SIGHTSEEING
-          )
+          const outdoorSightseeing = result.find((a) => a.type === ActivityType.OUTDOOR_SIGHTSEEING)
+          const indoorSightseeing = result.find((a) => a.type === ActivityType.INDOOR_SIGHTSEEING)
 
           assert.isDefined(surfing, 'Surfing activity not found')
           assert.isDefined(outdoorSightseeing, 'Outdoor sightseeing activity not found')
@@ -178,15 +182,17 @@ test.group('ActivityRankingService - Property Tests', () => {
         fc.integer({ min: 1, max: 7 }), // Number of days
         async (precipitation, temperature, numDays) => {
           // Create forecast with rainy conditions
-          const dailyForecasts = Array.from({ length: numDays }, (_, i) =>
-            new DailyForecast({
-              date: new Date(Date.now() + i * 24 * 60 * 60 * 1000),
-              temperatureMax: temperature,
-              temperatureMin: temperature - 5,
-              precipitation,
-              windSpeed: fc.sample(fc.float({ min: 10, max: 40 }), 1)[0],
-              weatherCode: fc.sample(fc.integer({ min: 51, max: 67 }), 1)[0], // Rain codes
-            })
+          const dailyForecasts = Array.from(
+            { length: numDays },
+            (_, i) =>
+              new DailyForecast({
+                date: new Date(Date.now() + i * 24 * 60 * 60 * 1000),
+                temperatureMax: temperature,
+                temperatureMin: temperature - 5,
+                precipitation,
+                windSpeed: fc.sample(fc.float({ min: 10, max: 40 }), 1)[0],
+                weatherCode: fc.sample(fc.integer({ min: 51, max: 67 }), 1)[0], // Rain codes
+              })
           )
 
           const forecast = new WeatherForecast({
@@ -203,14 +209,10 @@ test.group('ActivityRankingService - Property Tests', () => {
           const result = await activityService.rankActivities(51.5, -0.1, numDays)
 
           // Find activities
-          const indoorSightseeing = result.find(
-            (a) => a.type === ActivityType.INDOOR_SIGHTSEEING
-          )
+          const indoorSightseeing = result.find((a) => a.type === ActivityType.INDOOR_SIGHTSEEING)
           const skiing = result.find((a) => a.type === ActivityType.SKIING)
           const surfing = result.find((a) => a.type === ActivityType.SURFING)
-          const outdoorSightseeing = result.find(
-            (a) => a.type === ActivityType.OUTDOOR_SIGHTSEEING
-          )
+          const outdoorSightseeing = result.find((a) => a.type === ActivityType.OUTDOOR_SIGHTSEEING)
 
           assert.isDefined(indoorSightseeing, 'Indoor sightseeing activity not found')
           assert.isDefined(skiing, 'Skiing activity not found')
@@ -257,15 +259,17 @@ test.group('ActivityRankingService - Property Tests', () => {
         fc.integer({ min: 1, max: 7 }), // Number of days
         async (latitude, longitude, numDays) => {
           // Create forecast with random conditions
-          const dailyForecasts = Array.from({ length: numDays }, (_, i) =>
-            new DailyForecast({
-              date: new Date(Date.now() + i * 24 * 60 * 60 * 1000),
-              temperatureMax: fc.sample(fc.float({ min: -20, max: 40 }), 1)[0],
-              temperatureMin: fc.sample(fc.float({ min: -30, max: 30 }), 1)[0],
-              precipitation: fc.sample(fc.float({ min: 0, max: 50 }), 1)[0],
-              windSpeed: fc.sample(fc.float({ min: 0, max: 100 }), 1)[0],
-              weatherCode: fc.sample(fc.integer({ min: 0, max: 99 }), 1)[0],
-            })
+          const dailyForecasts = Array.from(
+            { length: numDays },
+            (_, i) =>
+              new DailyForecast({
+                date: new Date(Date.now() + i * 24 * 60 * 60 * 1000),
+                temperatureMax: fc.sample(fc.float({ min: -20, max: 40 }), 1)[0],
+                temperatureMin: fc.sample(fc.float({ min: -30, max: 30 }), 1)[0],
+                precipitation: fc.sample(fc.float({ min: 0, max: 50 }), 1)[0],
+                windSpeed: fc.sample(fc.float({ min: 0, max: 100 }), 1)[0],
+                weatherCode: fc.sample(fc.integer({ min: 0, max: 99 }), 1)[0],
+              })
           )
 
           const forecast = new WeatherForecast({
@@ -287,10 +291,10 @@ test.group('ActivityRankingService - Property Tests', () => {
           assert.equal(result1.length, result2.length, 'Result lengths should match')
           assert.equal(result2.length, result3.length, 'Result lengths should match')
 
-          for (let i = 0; i < result1.length; i++) {
+          for (const [i, element] of result1.entries()) {
             // Check activity type
             assert.equal(
-              result1[i].type,
+              element.type,
               result2[i].type,
               `Activity type at position ${i} should match between runs 1 and 2`
             )
@@ -302,9 +306,9 @@ test.group('ActivityRankingService - Property Tests', () => {
 
             // Check score
             assert.equal(
-              result1[i].score,
+              element.score,
               result2[i].score,
-              `Score for ${result1[i].type} should match between runs 1 and 2`
+              `Score for ${element.type} should match between runs 1 and 2`
             )
             assert.equal(
               result2[i].score,
@@ -314,9 +318,9 @@ test.group('ActivityRankingService - Property Tests', () => {
 
             // Check suitability
             assert.equal(
-              result1[i].suitability,
+              element.suitability,
               result2[i].suitability,
-              `Suitability for ${result1[i].type} should match between runs 1 and 2`
+              `Suitability for ${element.type} should match between runs 1 and 2`
             )
             assert.equal(
               result2[i].suitability,
@@ -326,9 +330,9 @@ test.group('ActivityRankingService - Property Tests', () => {
 
             // Check reason
             assert.equal(
-              result1[i].reason,
+              element.reason,
               result2[i].reason,
-              `Reason for ${result1[i].type} should match between runs 1 and 2`
+              `Reason for ${element.type} should match between runs 1 and 2`
             )
             assert.equal(
               result2[i].reason,

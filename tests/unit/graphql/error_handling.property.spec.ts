@@ -44,7 +44,10 @@ test.group('GraphQL Error Handling - Property-Based Tests', () => {
             message: fc.string({ minLength: 1, maxLength: 100 }),
             resourceType: fc.option(fc.string({ minLength: 1, maxLength: 50 }), { nil: undefined }),
             resourceId: fc.option(
-              fc.oneof(fc.string({ minLength: 1, maxLength: 50 }), fc.integer({ min: 1, max: 1000000 })),
+              fc.oneof(
+                fc.string({ minLength: 1, maxLength: 50 }),
+                fc.integer({ min: 1, max: 1000000 })
+              ),
               { nil: undefined }
             ),
           }),
@@ -62,18 +65,10 @@ test.group('GraphQL Error Handling - Property-Based Tests', () => {
 
           switch (errorData.type) {
             case 'validation':
-              error = new ValidationException(
-                errorData.message,
-                errorData.field,
-                errorData.value
-              )
+              error = new ValidationException(errorData.message, errorData.field, errorData.value)
               break
             case 'weather_api':
-              error = new WeatherAPIException(
-                errorData.message,
-                undefined,
-                errorData.endpoint
-              )
+              error = new WeatherAPIException(errorData.message, undefined, errorData.endpoint)
               break
             case 'not_found':
               error = new NotFoundException(
@@ -83,11 +78,7 @@ test.group('GraphQL Error Handling - Property-Based Tests', () => {
               )
               break
             case 'app_error':
-              error = new AppError(
-                errorData.message,
-                errorData.statusCode,
-                errorData.code
-              )
+              error = new AppError(errorData.message, errorData.statusCode, errorData.code)
               break
             default:
               throw new Error('Unknown error type')
@@ -105,10 +96,7 @@ test.group('GraphQL Error Handling - Property-Based Tests', () => {
           // Property 1: Error must have a message
           assert.isDefined(graphqlError.message, 'GraphQL error must have a message')
           assert.isString(graphqlError.message, 'GraphQL error message must be a string')
-          assert.isTrue(
-            graphqlError.message.length > 0,
-            'GraphQL error message must not be empty'
-          )
+          assert.isTrue(graphqlError.message.length > 0, 'GraphQL error message must not be empty')
 
           // Property 2: Error must have extensions with code
           assert.isDefined(graphqlError.extensions, 'GraphQL error must have extensions')
@@ -116,10 +104,7 @@ test.group('GraphQL Error Handling - Property-Based Tests', () => {
             graphqlError.extensions.code,
             'GraphQL error extensions must have a code'
           )
-          assert.isString(
-            graphqlError.extensions.code,
-            'GraphQL error code must be a string'
-          )
+          assert.isString(graphqlError.extensions.code, 'GraphQL error code must be a string')
           assert.isTrue(
             (graphqlError.extensions.code as string).length > 0,
             'GraphQL error code must not be empty'

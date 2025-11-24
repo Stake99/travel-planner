@@ -12,7 +12,6 @@ import { test } from '@japa/runner'
  */
 
 test.group('GraphQL Integration - searchCities', () => {
-
   test('should return cities for valid query', async ({ client }) => {
     const query = `
       query {
@@ -135,7 +134,6 @@ test.group('GraphQL Integration - searchCities', () => {
 })
 
 test.group('GraphQL Integration - getWeatherForecast', () => {
-
   test('should return weather forecast for valid coordinates', async ({ client }) => {
     const query = `
       query {
@@ -280,7 +278,6 @@ test.group('GraphQL Integration - getWeatherForecast', () => {
 })
 
 test.group('GraphQL Integration - getActivityRecommendations', () => {
-
   test('should return error for city not found', async ({ client }) => {
     const query = `
       query {
@@ -335,7 +332,6 @@ test.group('GraphQL Integration - getActivityRecommendations', () => {
 })
 
 test.group('GraphQL Integration - Error Structure', () => {
-
   test('should return consistent error structure for validation errors', async ({ client }) => {
     const query = `
       query {
@@ -406,7 +402,6 @@ test.group('GraphQL Integration - Error Structure', () => {
 })
 
 test.group('GraphQL Integration - Health Check', () => {
-
   test('should return health status', async ({ client }) => {
     const response = await client.get('/health')
 
@@ -426,7 +421,6 @@ test.group('GraphQL Integration - Health Check', () => {
 })
 
 test.group('GraphQL Integration - Playground', () => {
-
   test('should return error message for GET request without query', async ({ client, assert }) => {
     const response = await client.get('/v1/api/graphql')
 

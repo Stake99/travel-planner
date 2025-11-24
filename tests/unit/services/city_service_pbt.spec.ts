@@ -25,14 +25,38 @@ test.group('CityService - Property-Based Tests', () => {
     await fc.assert(
       fc.asyncProperty(
         // Generate a search query (1-20 characters, letters only)
-        fc.string({ minLength: 1, maxLength: 20, unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz'.split('')) }),
+        fc.string({
+          minLength: 1,
+          maxLength: 20,
+          unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz'.split('')),
+        }),
         // Generate a list of cities (0-20 cities)
         fc.array(
           fc.record({
             id: fc.integer({ min: 1, max: 1000000 }),
-            name: fc.string({ minLength: 1, maxLength: 50, unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '.split('')) }).filter(s => s.trim().length > 0),
-            country: fc.string({ minLength: 1, maxLength: 50, unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '.split('')) }).filter(s => s.trim().length > 0),
-            countryCode: fc.string({ minLength: 2, maxLength: 2, unit: fc.constantFrom(...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')) }),
+            name: fc
+              .string({
+                minLength: 1,
+                maxLength: 50,
+                unit: fc.constantFrom(
+                  ...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '.split('')
+                ),
+              })
+              .filter((s) => s.trim().length > 0),
+            country: fc
+              .string({
+                minLength: 1,
+                maxLength: 50,
+                unit: fc.constantFrom(
+                  ...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '.split('')
+                ),
+              })
+              .filter((s) => s.trim().length > 0),
+            countryCode: fc.string({
+              minLength: 2,
+              maxLength: 2,
+              unit: fc.constantFrom(...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')),
+            }),
             latitude: fc.double({ min: -90, max: 90 }),
             longitude: fc.double({ min: -180, max: 180 }),
             timezone: fc.constantFrom('UTC', 'America/New_York', 'Europe/London', 'Asia/Tokyo'),
@@ -66,7 +90,11 @@ test.group('CityService - Property-Based Tests', () => {
             clear: async () => {},
           }
 
-          const cityService = new CityService(mockWeatherClient, mockCacheManager, createMockMetrics())
+          const cityService = new CityService(
+            mockWeatherClient,
+            mockCacheManager,
+            createMockMetrics()
+          )
 
           // Execute the search
           const results = await cityService.searchCities(query)
@@ -100,12 +128,8 @@ test.group('CityService - Property-Based Tests', () => {
 
           // Property 3: Within same match type, cities should be ordered by population (descending)
           // Group results by match type
-          const exactMatches = results.filter(
-            (city) => city.name.toLowerCase() === queryLower
-          )
-          const partialMatches = results.filter(
-            (city) => city.name.toLowerCase() !== queryLower
-          )
+          const exactMatches = results.filter((city) => city.name.toLowerCase() === queryLower)
+          const partialMatches = results.filter((city) => city.name.toLowerCase() !== queryLower)
 
           // Check exact matches are ordered by population
           for (let i = 0; i < exactMatches.length - 1; i++) {
@@ -159,33 +183,66 @@ test.group('CityService - Property-Based Tests', () => {
     await fc.assert(
       fc.asyncProperty(
         // Generate a search query
-        fc.string({ minLength: 1, maxLength: 20, unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz'.split('')) }),
+        fc.string({
+          minLength: 1,
+          maxLength: 20,
+          unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz'.split('')),
+        }),
         // Generate OpenMeteo-like city data with unique IDs
         fc.uniqueArray(
           fc.record({
             id: fc.integer({ min: 1, max: 1000000 }),
-            name: fc.string({ minLength: 1, maxLength: 50, unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '.split('')) }).filter(s => s.trim().length > 0),
-            country: fc.string({ minLength: 1, maxLength: 50, unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '.split('')) }).filter(s => s.trim().length > 0),
-            countryCode: fc.string({ minLength: 2, maxLength: 2, unit: fc.constantFrom(...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')) }),
+            name: fc
+              .string({
+                minLength: 1,
+                maxLength: 50,
+                unit: fc.constantFrom(
+                  ...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '.split('')
+                ),
+              })
+              .filter((s) => s.trim().length > 0),
+            country: fc
+              .string({
+                minLength: 1,
+                maxLength: 50,
+                unit: fc.constantFrom(
+                  ...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '.split('')
+                ),
+              })
+              .filter((s) => s.trim().length > 0),
+            countryCode: fc.string({
+              minLength: 2,
+              maxLength: 2,
+              unit: fc.constantFrom(...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')),
+            }),
             latitude: fc.double({ min: -90, max: 90, noNaN: true }),
             longitude: fc.double({ min: -180, max: 180, noNaN: true }),
-            timezone: fc.constantFrom('UTC', 'America/New_York', 'Europe/London', 'Asia/Tokyo', 'Australia/Sydney'),
+            timezone: fc.constantFrom(
+              'UTC',
+              'America/New_York',
+              'Europe/London',
+              'Asia/Tokyo',
+              'Australia/Sydney'
+            ),
             population: fc.option(fc.integer({ min: 0, max: 50000000 }), { nil: undefined }),
           }),
           { minLength: 1, maxLength: 10, selector: (city) => city.id }
         ),
         async (query, apiCityData) => {
           // Transform the API data to City objects (simulating what OpenMeteoClient does)
-          const cities = apiCityData.map((data) => new City({
-            id: data.id,
-            name: data.name,
-            country: data.country,
-            countryCode: data.countryCode,
-            latitude: data.latitude,
-            longitude: data.longitude,
-            timezone: data.timezone,
-            population: data.population,
-          }))
+          const cities = apiCityData.map(
+            (data) =>
+              new City({
+                id: data.id,
+                name: data.name,
+                country: data.country,
+                countryCode: data.countryCode,
+                latitude: data.latitude,
+                longitude: data.longitude,
+                timezone: data.timezone,
+                population: data.population,
+              })
+          )
 
           // Create mock weather client that returns the transformed cities
           const mockWeatherClient: IWeatherClient = {
@@ -203,7 +260,11 @@ test.group('CityService - Property-Based Tests', () => {
             clear: async () => {},
           }
 
-          const cityService = new CityService(mockWeatherClient, mockCacheManager, createMockMetrics())
+          const cityService = new CityService(
+            mockWeatherClient,
+            mockCacheManager,
+            createMockMetrics()
+          )
 
           // Execute the search
           const results = await cityService.searchCities(query)
@@ -211,10 +272,13 @@ test.group('CityService - Property-Based Tests', () => {
           // Property: All returned cities must have all required fields
           for (const city of results) {
             // Find the original data for this city by ID
-            const originalData = apiCityData.find(d => d.id === city.id)
-            
+            const originalData = apiCityData.find((d) => d.id === city.id)
+
             // This should always be found since we're returning the same cities
             assert.isDefined(originalData, `Should find original data for city ID ${city.id}`)
+            if (!originalData) {
+              continue
+            }
 
             // Verify all required fields are present and non-empty
             assert.isDefined(city.id, 'City id should be defined')
@@ -231,15 +295,24 @@ test.group('CityService - Property-Based Tests', () => {
 
             assert.isDefined(city.countryCode, 'City countryCode should be defined')
             assert.isString(city.countryCode, 'City countryCode should be a string')
-            assert.isTrue(city.countryCode.trim().length > 0, 'City countryCode should not be empty')
+            assert.isTrue(
+              city.countryCode.trim().length > 0,
+              'City countryCode should not be empty'
+            )
 
             assert.isDefined(city.latitude, 'City latitude should be defined')
             assert.isNumber(city.latitude, 'City latitude should be a number')
-            assert.isTrue(city.latitude >= -90 && city.latitude <= 90, 'City latitude should be in valid range')
+            assert.isTrue(
+              city.latitude >= -90 && city.latitude <= 90,
+              'City latitude should be in valid range'
+            )
 
             assert.isDefined(city.longitude, 'City longitude should be defined')
             assert.isNumber(city.longitude, 'City longitude should be a number')
-            assert.isTrue(city.longitude >= -180 && city.longitude <= 180, 'City longitude should be in valid range')
+            assert.isTrue(
+              city.longitude >= -180 && city.longitude <= 180,
+              'City longitude should be in valid range'
+            )
 
             assert.isDefined(city.timezone, 'City timezone should be defined')
             assert.isString(city.timezone, 'City timezone should be a string')
@@ -248,19 +321,51 @@ test.group('CityService - Property-Based Tests', () => {
             // Verify optional fields are handled correctly
             if (originalData.population !== undefined) {
               assert.isDefined(city.population, 'City population should be defined when provided')
-              assert.isNumber(city.population, 'City population should be a number')
-              assert.isTrue(city.population >= 0, 'City population should be non-negative')
+              if (city.population !== undefined) {
+                assert.isNumber(city.population, 'City population should be a number')
+                assert.isTrue(city.population >= 0, 'City population should be non-negative')
+              }
             }
 
             // Verify data integrity - values should match original data (after trimming)
             assert.equal(city.id, originalData.id, 'City id should match original')
-            assert.equal(city.name, originalData.name.trim(), 'City name should match original (trimmed)')
-            assert.equal(city.country, originalData.country.trim(), 'City country should match original (trimmed)')
-            assert.equal(city.countryCode, originalData.countryCode.trim(), 'City countryCode should match original (trimmed)')
-            assert.equal(city.latitude, originalData.latitude, 'City latitude should match original')
-            assert.equal(city.longitude, originalData.longitude, 'City longitude should match original')
-            assert.equal(city.timezone, originalData.timezone.trim(), 'City timezone should match original (trimmed)')
-            assert.equal(city.population, originalData.population, 'City population should match original')
+            assert.equal(
+              city.name,
+              originalData.name.trim(),
+              'City name should match original (trimmed)'
+            )
+            assert.equal(
+              city.country,
+              originalData.country.trim(),
+              'City country should match original (trimmed)'
+            )
+            assert.equal(
+              city.countryCode,
+              originalData.countryCode.trim(),
+              'City countryCode should match original (trimmed)'
+            )
+            assert.equal(
+              city.latitude,
+              originalData.latitude,
+              'City latitude should match original'
+            )
+            assert.equal(
+              city.longitude,
+              originalData.longitude,
+              'City longitude should match original'
+            )
+            assert.equal(
+              city.timezone,
+              originalData.timezone.trim(),
+              'City timezone should match original (trimmed)'
+            )
+            if (originalData.population !== undefined && city.population !== undefined) {
+              assert.equal(
+                city.population,
+                originalData.population,
+                'City population should match original'
+              )
+            }
           }
         }
       ),

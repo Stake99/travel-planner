@@ -29,26 +29,15 @@ export class WeatherResolver {
    * @returns Weather forecast with daily forecasts
    * @throws GraphQLError with appropriate error code and details
    */
-  async getWeatherForecast(
-    _parent: unknown,
-    args: { input: WeatherForecastInput }
-  ) {
+  async getWeatherForecast(_parent: unknown, args: { input: WeatherForecastInput }) {
     try {
       const { latitude, longitude, days = 7 } = args.input
 
       if (days < 1 || days > 16) {
-        throw new ValidationException(
-          'Days must be between 1 and 16',
-          'days',
-          days
-        )
+        throw new ValidationException('Days must be between 1 and 16', 'days', days)
       }
 
-      const forecast = await this.weatherService.getWeatherForecast(
-        latitude,
-        longitude,
-        days
-      )
+      const forecast = await this.weatherService.getWeatherForecast(latitude, longitude, days)
 
       return forecast
     } catch (error) {

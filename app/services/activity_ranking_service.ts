@@ -65,8 +65,7 @@ export class ActivityRankingService {
         return b.score - a.score
       }
       return (
-        Object.values(ActivityType).indexOf(a.type) -
-        Object.values(ActivityType).indexOf(b.type)
+        Object.values(ActivityType).indexOf(a.type) - Object.values(ActivityType).indexOf(b.type)
       )
     })
 
@@ -240,10 +239,8 @@ export class ActivityRankingService {
     score: number,
     forecasts: DailyForecast[]
   ): string {
-    const avgTemp =
-      forecasts.reduce((sum, f) => sum + f.temperatureMax, 0) / forecasts.length
-    const avgPrecip =
-      forecasts.reduce((sum, f) => sum + f.precipitation, 0) / forecasts.length
+    const avgTemp = forecasts.reduce((sum, f) => sum + f.temperatureMax, 0) / forecasts.length
+    const avgPrecip = forecasts.reduce((sum, f) => sum + f.precipitation, 0) / forecasts.length
     const avgWind = forecasts.reduce((sum, f) => sum + f.windSpeed, 0) / forecasts.length
     const snowyDays = forecasts.filter(
       (f) => f.getWeatherCondition() === WeatherCondition.SNOWY

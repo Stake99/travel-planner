@@ -21,10 +21,7 @@ export default class MetricsManager implements IMetrics {
    * Record a timing metric in milliseconds
    */
   recordTiming(name: string, durationMs: number, tags?: Record<string, string>): void {
-    logger.info(
-      { metric: 'timing', name, durationMs, tags },
-      `Timing: ${name} = ${durationMs}ms`
-    )
+    logger.info({ metric: 'timing', name, durationMs, tags }, `Timing: ${name} = ${durationMs}ms`)
   }
 
   /**

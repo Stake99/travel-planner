@@ -25,7 +25,11 @@ test.group('ActivityRankingService - Unit Tests', () => {
     }
 
     // Override getWeatherForecast to return our mock forecast
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
     weatherService.getWeatherForecast = async () => forecast
 
     return weatherService
@@ -189,10 +193,10 @@ test.group('ActivityRankingService - Unit Tests', () => {
     assert.deepEqual(result2, result3)
 
     // Verify ordering is consistent
-    for (let i = 0; i < result1.length; i++) {
-      assert.equal(result1[i].type, result2[i].type)
-      assert.equal(result1[i].score, result2[i].score)
-      assert.equal(result1[i].suitability, result2[i].suitability)
+    for (const [i, element] of result1.entries()) {
+      assert.equal(element.type, result2[i].type)
+      assert.equal(element.score, result2[i].score)
+      assert.equal(element.suitability, result2[i].suitability)
     }
   })
 

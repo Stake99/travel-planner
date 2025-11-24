@@ -53,7 +53,7 @@ test.group('GraphQL - Error Handling', () => {
     assert.isDefined(body.errors)
   })
 
-  test('returns error for empty query string', async ({ client, assert }) => {
+  test('returns error for empty query string', async ({ client }) => {
     const response = await client.post('/v1/api/graphql').json({
       query: '',
     })
@@ -139,7 +139,8 @@ test.group('GraphQL - Error Handling', () => {
         expectedCode: 'VALIDATION_ERROR',
       },
       {
-        query: 'query { getWeatherForecast(input: { latitude: 200, longitude: 50, days: 7 }) { latitude } }',
+        query:
+          'query { getWeatherForecast(input: { latitude: 200, longitude: 50, days: 7 }) { latitude } }',
         expectedCode: 'VALIDATION_ERROR',
       },
       {
@@ -231,4 +232,3 @@ test.group('GraphQL - Error Handling', () => {
     assert.isDefined(body.errors)
   })
 })
-

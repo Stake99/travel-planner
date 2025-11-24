@@ -34,7 +34,7 @@ test.group('HTTP Routes - Comprehensive Tests', () => {
     assert.isDefined(body.endpoints.health)
   })
 
-  test('GraphQL POST endpoint handles different Content-Type headers', async ({ client, assert }) => {
+  test('GraphQL POST endpoint handles different Content-Type headers', async ({ client }) => {
     const response = await client
       .post('/v1/api/graphql')
       .header('Content-Type', 'application/json')
@@ -43,13 +43,16 @@ test.group('HTTP Routes - Comprehensive Tests', () => {
     response.assertStatus(200)
   })
 
-  test('GraphQL POST endpoint handles missing body', async ({ client, assert }) => {
+  test('GraphQL POST endpoint handles missing body', async ({ client }) => {
     const response = await client.post('/v1/api/graphql').header('Content-Type', 'application/json')
 
     response.assertStatus(400)
   })
 
-  test('GraphQL GET endpoint returns error for missing query parameter', async ({ client, assert }) => {
+  test('GraphQL GET endpoint returns error for missing query parameter', async ({
+    client,
+    assert,
+  }) => {
     const response = await client.get('/v1/api/graphql')
 
     response.assertStatus(400)
@@ -60,7 +63,9 @@ test.group('HTTP Routes - Comprehensive Tests', () => {
   })
 
   test('GraphQL GET endpoint handles query parameter correctly', async ({ client, assert }) => {
-    const query = encodeURIComponent('query { searchCities(query: "London", limit: 1) { id name } }')
+    const query = encodeURIComponent(
+      'query { searchCities(query: "London", limit: 1) { id name } }'
+    )
     const response = await client.get(`/v1/api/graphql?query=${query}`)
 
     response.assertStatus(200)
@@ -78,10 +83,10 @@ test.group('HTTP Routes - Comprehensive Tests', () => {
 
     response.assertStatus(200)
 
-      const body = response.body()
-      if (body.data && body.data.getWeatherForecast) {
-        assert.approximately(body.data.getWeatherForecast.latitude, 51.5074, 0.1)
-      }
+    const body = response.body()
+    if (body.data && body.data.getWeatherForecast) {
+      assert.approximately(body.data.getWeatherForecast.latitude, 51.5074, 0.1)
+    }
   })
 
   test('GraphQL GET endpoint handles invalid variables JSON', async ({ client, assert }) => {
@@ -181,31 +186,31 @@ test.group('HTTP Routes - Comprehensive Tests', () => {
     assert.isDefined(body.data)
   })
 
-  test('returns 404 for non-existent routes', async ({ client, assert }) => {
+  test('returns 404 for non-existent routes', async ({ client }) => {
     const response = await client.get('/non-existent-route')
 
     response.assertStatus(404)
   })
 
-  test('returns 404 for POST to non-existent routes', async ({ client, assert }) => {
+  test('returns 404 for POST to non-existent routes', async ({ client }) => {
     const response = await client.post('/non-existent-route').json({})
 
     response.assertStatus(404)
   })
 
-  test('handles OPTIONS request for CORS', async ({ client, assert }) => {
+  test('handles OPTIONS request for CORS', async ({ client }) => {
     const response = await client.options('/v1/api/graphql')
 
     response.assertStatus(404)
   })
 
-  test('handles HEAD request to health endpoint', async ({ client, assert }) => {
+  test('handles HEAD request to health endpoint', async ({ client }) => {
     const response = await client.head('/health')
 
     response.assertStatus(200)
   })
 
-  test('handles request with invalid HTTP method', async ({ client, assert }) => {
+  test('handles request with invalid HTTP method', async ({ client }) => {
     const response = await client.patch('/v1/api/graphql').json({
       query: 'query { searchCities(query: "London") { id } }',
     })
@@ -213,4 +218,3 @@ test.group('HTTP Routes - Comprehensive Tests', () => {
     response.assertStatus(404)
   })
 })
-

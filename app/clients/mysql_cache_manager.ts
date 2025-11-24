@@ -143,9 +143,12 @@ export class MySQLCacheManager implements ICacheManager {
    * Runs every 5 minutes
    */
   private startCleanupInterval(): void {
-    setInterval(() => {
-      this.cleanup()
-    }, 5 * 60 * 1000) // 5 minutes
+    setInterval(
+      () => {
+        this.cleanup()
+      },
+      5 * 60 * 1000
+    ) // 5 minutes
   }
 
   /**

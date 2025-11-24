@@ -11,9 +11,7 @@ import { City } from '#models/city'
  * Handles activity ranking based on weather forecasts and error translation.
  */
 export class ActivityResolver {
-  constructor(
-    private readonly activityRankingService: ActivityRankingService
-  ) {}
+  constructor(private readonly activityRankingService: ActivityRankingService) {}
 
   /**
    * Resolve the getActivityRecommendations query.
@@ -150,7 +148,11 @@ export class ActivityResolver {
         throw new ValidationException('Latitude must be between -90 and 90', 'latitude', latitude)
       }
       if (longitude < -180 || longitude > 180) {
-        throw new ValidationException('Longitude must be between -180 and 180', 'longitude', longitude)
+        throw new ValidationException(
+          'Longitude must be between -180 and 180',
+          'longitude',
+          longitude
+        )
       }
 
       const activities = await this.activityRankingService.rankActivities(latitude, longitude, days)

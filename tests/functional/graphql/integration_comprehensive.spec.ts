@@ -120,14 +120,14 @@ test.group('GraphQL - Comprehensive Integration Tests', () => {
 
     response.assertStatus(200)
 
-      const body = response.body()
-      if (body.data && body.data.getWeatherForecast) {
-        const forecast = body.data.getWeatherForecast
-        assert.approximately(forecast.latitude, 51.5074, 0.1)
-        assert.approximately(forecast.longitude, -0.1278, 0.1)
-        assert.isArray(forecast.dailyForecasts)
-        assert.equal(forecast.dailyForecasts.length, 7)
-      }
+    const body = response.body()
+    if (body.data && body.data.getWeatherForecast) {
+      const forecast = body.data.getWeatherForecast
+      assert.approximately(forecast.latitude, 51.5074, 0.1)
+      assert.approximately(forecast.longitude, -0.1278, 0.1)
+      assert.isArray(forecast.dailyForecasts)
+      assert.equal(forecast.dailyForecasts.length, 7)
+    }
   })
 
   test('handles query with default variable values', async ({ client, assert }) => {
@@ -198,9 +198,7 @@ test.group('GraphQL - Comprehensive Integration Tests', () => {
       }
     `
 
-    const promises = Array.from({ length: 5 }, () =>
-      client.post('/v1/api/graphql').json({ query })
-    )
+    const promises = Array.from({ length: 5 }, () => client.post('/v1/api/graphql').json({ query }))
 
     const responses = await Promise.all(promises)
 
@@ -385,4 +383,3 @@ test.group('GraphQL - Comprehensive Integration Tests', () => {
     }
   })
 })
-

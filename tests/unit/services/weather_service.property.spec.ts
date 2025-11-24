@@ -25,15 +25,17 @@ test.group('WeatherService - Property Tests', () => {
         fc.integer({ min: 1, max: 16 }), // Valid days range
         async (latitude, longitude, days) => {
           // Create mock forecast with the requested number of days
-          const dailyForecasts = Array.from({ length: days }, (_, i) =>
-            new DailyForecast({
-              date: new Date(Date.now() + i * 24 * 60 * 60 * 1000),
-              temperatureMax: fc.sample(fc.float({ min: -50, max: 50 }), 1)[0],
-              temperatureMin: fc.sample(fc.float({ min: -50, max: 50 }), 1)[0],
-              precipitation: fc.sample(fc.float({ min: 0, max: 100 }), 1)[0],
-              windSpeed: fc.sample(fc.float({ min: 0, max: 200 }), 1)[0],
-              weatherCode: fc.sample(fc.integer({ min: 0, max: 99 }), 1)[0],
-            })
+          const dailyForecasts = Array.from(
+            { length: days },
+            (_, i) =>
+              new DailyForecast({
+                date: new Date(Date.now() + i * 24 * 60 * 60 * 1000),
+                temperatureMax: fc.sample(fc.float({ min: -50, max: 50 }), 1)[0],
+                temperatureMin: fc.sample(fc.float({ min: -50, max: 50 }), 1)[0],
+                precipitation: fc.sample(fc.float({ min: 0, max: 100 }), 1)[0],
+                windSpeed: fc.sample(fc.float({ min: 0, max: 200 }), 1)[0],
+                weatherCode: fc.sample(fc.integer({ min: 0, max: 99 }), 1)[0],
+              })
           )
 
           const mockForecast = new WeatherForecast({
@@ -55,7 +57,11 @@ test.group('WeatherService - Property Tests', () => {
             clear: async () => {},
           }
 
-          const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+          const weatherService = new WeatherService(
+            mockWeatherClient,
+            mockCacheManager,
+            createMockMetrics()
+          )
 
           // Act
           const result = await weatherService.getWeatherForecast(latitude, longitude, days)
@@ -69,10 +75,7 @@ test.group('WeatherService - Property Tests', () => {
 
           // Assert: Each daily forecast has all required fields
           result.dailyForecasts.forEach((forecast, index) => {
-            assert.isDefined(
-              forecast.date,
-              `Daily forecast ${index} missing date`
-            )
+            assert.isDefined(forecast.date, `Daily forecast ${index} missing date`)
             assert.isDefined(
               forecast.temperatureMax,
               `Daily forecast ${index} missing temperatureMax`
@@ -85,14 +88,8 @@ test.group('WeatherService - Property Tests', () => {
               forecast.precipitation,
               `Daily forecast ${index} missing precipitation`
             )
-            assert.isDefined(
-              forecast.windSpeed,
-              `Daily forecast ${index} missing windSpeed`
-            )
-            assert.isDefined(
-              forecast.weatherCode,
-              `Daily forecast ${index} missing weatherCode`
-            )
+            assert.isDefined(forecast.windSpeed, `Daily forecast ${index} missing windSpeed`)
+            assert.isDefined(forecast.weatherCode, `Daily forecast ${index} missing weatherCode`)
 
             // Assert: Values are of correct type
             assert.instanceOf(forecast.date, Date)

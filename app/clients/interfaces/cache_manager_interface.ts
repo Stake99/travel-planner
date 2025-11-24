@@ -3,6 +3,7 @@
  * Provides a consistent abstraction for caching that can be implemented
  * with in-memory storage, Redis, or other caching backends.
  */
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export interface ICacheManager {
   /**
    * Retrieve a value from the cache by key.

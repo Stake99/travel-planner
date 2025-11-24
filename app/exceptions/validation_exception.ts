@@ -17,11 +17,11 @@ export default class ValidationException extends AppError {
 
   constructor(message: string, field?: string, value?: any) {
     const details: Record<string, any> = {}
-    
+
     if (field !== undefined) {
       details.field = field
     }
-    
+
     if (value !== undefined) {
       details.value = value
     }
@@ -52,10 +52,6 @@ export default class ValidationException extends AppError {
    * Create a ValidationException for invalid input
    */
   static invalidInput(field: string, value: any, reason: string): ValidationException {
-    return new ValidationException(
-      `Invalid ${field}: ${reason}`,
-      field,
-      value
-    )
+    return new ValidationException(`Invalid ${field}: ${reason}`, field, value)
   }
 }

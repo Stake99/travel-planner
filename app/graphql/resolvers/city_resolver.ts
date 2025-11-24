@@ -20,19 +20,12 @@ export class CityResolver {
    * @returns Array of matching cities
    * @throws GraphQLError with appropriate error code and details
    */
-  async searchCities(
-    _parent: unknown,
-    args: { query: string; limit?: number }
-  ) {
+  async searchCities(_parent: unknown, args: { query: string; limit?: number }) {
     try {
       const { query, limit = 10 } = args
 
       if (limit < 1 || limit > 100) {
-        throw new ValidationException(
-          'Limit must be between 1 and 100',
-          'limit',
-          limit
-        )
+        throw new ValidationException('Limit must be between 1 and 100', 'limit', limit)
       }
 
       const cities = await this.cityService.searchCities(query, limit)
@@ -50,16 +43,13 @@ export class CityResolver {
       }
 
       if (error instanceof WeatherAPIException) {
-        throw new GraphQLError(
-          'Unable to search cities at this time. Please try again later.',
-          {
-            extensions: {
-              code: error.code,
-              statusCode: error.statusCode,
-              ...error.details,
-            },
-          }
-        )
+        throw new GraphQLError('Unable to search cities at this time. Please try again later.', {
+          extensions: {
+            code: error.code,
+            statusCode: error.statusCode,
+            ...error.details,
+          },
+        })
       }
 
       if (error instanceof AppError) {

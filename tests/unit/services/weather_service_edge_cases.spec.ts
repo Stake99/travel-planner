@@ -37,7 +37,11 @@ test.group('WeatherService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
     await assert.doesNotReject(async () => await weatherService.getWeatherForecast(90, 180, 7))
     await assert.doesNotReject(async () => await weatherService.getWeatherForecast(-90, -180, 7))
@@ -59,24 +63,24 @@ test.group('WeatherService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(90.0001, 0, 7),
-      ValidationException
-    )
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(-90.0001, 0, 7),
-      ValidationException
-    )
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(0, 180.0001, 7),
-      ValidationException
-    )
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(0, -180.0001, 7),
-      ValidationException
-    )
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(90.0001, 0, 7)
+    }, ValidationException as any)
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(-90.0001, 0, 7)
+    }, ValidationException as any)
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(0, 180.0001, 7)
+    }, ValidationException as any)
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(0, -180.0001, 7)
+    }, ValidationException as any)
   })
 
   test('handles days boundary values correctly', async ({ assert }) => {
@@ -108,7 +112,11 @@ test.group('WeatherService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
     await assert.doesNotReject(async () => await weatherService.getWeatherForecast(51.5, -0.1, 1))
     await assert.doesNotReject(async () => await weatherService.getWeatherForecast(51.5, -0.1, 16))
@@ -129,16 +137,18 @@ test.group('WeatherService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(51.5, -0.1, 0),
-      ValidationException
-    )
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(51.5, -0.1, 17),
-      ValidationException
-    )
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(51.5, -0.1, 0)
+    }, ValidationException as any)
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(51.5, -0.1, 17)
+    }, ValidationException as any)
   })
 
   test('handles Infinity and -Infinity coordinates', async ({ assert }) => {
@@ -156,24 +166,24 @@ test.group('WeatherService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(Infinity, 0, 7),
-      ValidationException
-    )
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(-Infinity, 0, 7),
-      ValidationException
-    )
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(0, Infinity, 7),
-      ValidationException
-    )
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(0, -Infinity, 7),
-      ValidationException
-    )
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(Infinity, 0, 7)
+    }, ValidationException as any)
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(-Infinity, 0, 7)
+    }, ValidationException as any)
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(0, Infinity, 7)
+    }, ValidationException as any)
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(0, -Infinity, 7)
+    }, ValidationException as any)
   })
 
   test('handles very high precision coordinates', async ({ assert }) => {
@@ -205,7 +215,11 @@ test.group('WeatherService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
     const result = await weatherService.getWeatherForecast(
       51.507400000000001,
@@ -232,12 +246,15 @@ test.group('WeatherService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
-
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(51.5, -0.1, 7),
-      WeatherAPIException
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
     )
+
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(51.5, -0.1, 7)
+    }, WeatherAPIException as any)
   })
 
   test('handles network errors gracefully', async ({ assert }) => {
@@ -255,12 +272,15 @@ test.group('WeatherService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
-
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(51.5, -0.1, 7),
-      WeatherAPIException
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
     )
+
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(51.5, -0.1, 7)
+    }, WeatherAPIException as any)
   })
 
   test('handles malformed API response gracefully', async ({ assert }) => {
@@ -278,12 +298,15 @@ test.group('WeatherService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
-
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(51.5, -0.1, 7),
-      WeatherAPIException
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
     )
+
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(51.5, -0.1, 7)
+    }, WeatherAPIException as any)
   })
 
   test('handles cache errors gracefully', async ({ assert }) => {
@@ -319,12 +342,15 @@ test.group('WeatherService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
-
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(51.5, -0.1, 7),
-      Error
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
     )
+
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(51.5, -0.1, 7)
+    }, Error)
   })
 
   test('handles string coordinates as invalid', async ({ assert }) => {
@@ -342,16 +368,18 @@ test.group('WeatherService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast('51.5' as any, -0.1, 7),
-      ValidationException
-    )
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(51.5, '-0.1' as any, 7),
-      ValidationException
-    )
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast('51.5' as any, -0.1, 7)
+    }, ValidationException as any)
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(51.5, '-0.1' as any, 7)
+    }, ValidationException as any)
   })
 
   test('handles null and undefined coordinates', async ({ assert }) => {
@@ -369,28 +397,32 @@ test.group('WeatherService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(null as any, -0.1, 7),
-      ValidationException
-    )
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(51.5, undefined as any, 7),
-      ValidationException
-    )
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(null as any, -0.1, 7)
+    }, ValidationException as any)
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(51.5, undefined as any, 7)
+    }, ValidationException as any)
   })
 
   test('handles very large forecast arrays', async ({ assert }) => {
-    const dailyForecasts = Array.from({ length: 16 }, (_, i) =>
-      new DailyForecast({
-        date: new Date(`2024-01-${i + 1}`),
-        temperatureMax: 15 + i,
-        temperatureMin: 5 + i,
-        precipitation: i,
-        windSpeed: 10 + i,
-        weatherCode: i % 10,
-      })
+    const dailyForecasts = Array.from(
+      { length: 16 },
+      (_, i) =>
+        new DailyForecast({
+          date: new Date(`2024-01-${i + 1}`),
+          temperatureMax: 15 + i,
+          temperatureMin: 5 + i,
+          precipitation: i,
+          windSpeed: 10 + i,
+          weatherCode: i % 10,
+        })
     )
 
     const mockForecast = new WeatherForecast({
@@ -412,11 +444,14 @@ test.group('WeatherService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
     const result = await weatherService.getWeatherForecast(51.5, -0.1, 16)
 
     assert.equal(result.dailyForecasts.length, 16)
   })
 })
-

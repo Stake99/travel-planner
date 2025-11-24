@@ -116,10 +116,10 @@ test.group('CityService - Unit Tests', () => {
     }
 
     const mockCacheManager: ICacheManager = {
-      get: async (key: string) => {
+      get: async <T>(key: string): Promise<T | null> => {
         // Return cached results for "london"
         if (key === 'city:search:london') {
-          return mockCities
+          return mockCities as T
         }
         return null
       },
@@ -214,17 +214,19 @@ test.group('CityService - Unit Tests', () => {
    * Validates: Requirements 1.1
    */
   test('limit parameter restricts number of results', async ({ assert }) => {
-    const mockCities = Array.from({ length: 20 }, (_, i) =>
-      new City({
-        id: i + 1, // IDs must be non-zero
-        name: `City${i}`,
-        country: 'Country',
-        countryCode: 'CC',
-        latitude: 0,
-        longitude: 0,
-        timezone: 'UTC',
-        population: 1000,
-      })
+    const mockCities = Array.from(
+      { length: 20 },
+      (_, i) =>
+        new City({
+          id: i + 1, // IDs must be non-zero
+          name: `City${i}`,
+          country: 'Country',
+          countryCode: 'CC',
+          latitude: 0,
+          longitude: 0,
+          timezone: 'UTC',
+          population: 1000,
+        })
     )
 
     const mockWeatherClient: IWeatherClient = {
@@ -287,8 +289,8 @@ test.group('CityService - Unit Tests', () => {
     }
 
     const mockCacheManager: ICacheManager = {
-      get: async () => null,
-      set: async (key: string, value: any) => {
+      get: async <T>(): Promise<T | null> => null,
+      set: async (_key: string, value: any) => {
         cachedValue = value
       },
       delete: async () => {},

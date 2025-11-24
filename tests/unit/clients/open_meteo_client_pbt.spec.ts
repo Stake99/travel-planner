@@ -247,5 +247,4 @@ test.group('OpenMeteoClient - Property-Based Tests', () => {
       { numRuns: 50 }
     )
   })
-
 })

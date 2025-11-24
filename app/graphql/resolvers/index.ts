@@ -47,16 +47,16 @@ export function createResolverMap(
 
   return {
     Query: {
-      searchCities: (parent: unknown, args: any, context: any) =>
+      searchCities: (parent: unknown, args: any, _context: any) =>
         resolvers.cityResolver.searchCities(parent, args),
 
-      getWeatherForecast: (parent: unknown, args: any, context: any) =>
+      getWeatherForecast: (parent: unknown, args: any, _context: any) =>
         resolvers.weatherResolver.getWeatherForecast(parent, args),
 
       getActivityRecommendations: (parent: unknown, args: any, context: any) =>
         resolvers.activityResolver.getActivityRecommendations(parent, args, context),
 
-      getActivityRecommendationsByCoordinates: (parent: unknown, args: any, context: any) =>
+      getActivityRecommendationsByCoordinates: (parent: unknown, args: any, _context: any) =>
         resolvers.activityResolver.getActivityRecommendationsByCoordinates(parent, args),
     },
     DailyForecast: {

@@ -4,7 +4,7 @@ import { WeatherService } from '#services/weather_service'
 import { IWeatherClient } from '#clients/interfaces/weather_client_interface'
 import { ICacheManager } from '#clients/interfaces/cache_manager_interface'
 import { WeatherForecast, DailyForecast } from '#models/weather'
-import { ActivityType, WeatherCondition } from '#types/enums'
+import { ActivityType } from '#types/enums'
 import { createMockMetrics } from '../helpers/mock_metrics.js'
 
 test.group('ActivityRankingService - Edge Cases', () => {
@@ -13,15 +13,17 @@ test.group('ActivityRankingService - Edge Cases', () => {
       latitude: 70,
       longitude: 0,
       timezone: 'UTC',
-      dailyForecasts: Array.from({ length: 7 }, () =>
-        new DailyForecast({
-          date: new Date('2024-01-01'),
-          temperatureMax: -20,
-          temperatureMin: -30,
-          precipitation: 10,
-          windSpeed: 5,
-          weatherCode: 71,
-        })
+      dailyForecasts: Array.from(
+        { length: 7 },
+        () =>
+          new DailyForecast({
+            date: new Date('2024-01-01'),
+            temperatureMax: -20,
+            temperatureMin: -30,
+            precipitation: 10,
+            windSpeed: 5,
+            weatherCode: 71,
+          })
       ),
     })
 
@@ -37,7 +39,11 @@ test.group('ActivityRankingService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
     const activityRankingService = new ActivityRankingService(weatherService, createMockMetrics())
 
     const activities = await activityRankingService.rankActivities(70, 0, 7)
@@ -52,15 +58,17 @@ test.group('ActivityRankingService - Edge Cases', () => {
       latitude: 25,
       longitude: 0,
       timezone: 'UTC',
-      dailyForecasts: Array.from({ length: 7 }, () =>
-        new DailyForecast({
-          date: new Date('2024-07-01'),
-          temperatureMax: 45,
-          temperatureMin: 35,
-          precipitation: 0,
-          windSpeed: 5,
-          weatherCode: 0,
-        })
+      dailyForecasts: Array.from(
+        { length: 7 },
+        () =>
+          new DailyForecast({
+            date: new Date('2024-07-01'),
+            temperatureMax: 45,
+            temperatureMin: 35,
+            precipitation: 0,
+            windSpeed: 5,
+            weatherCode: 0,
+          })
       ),
     })
 
@@ -76,7 +84,11 @@ test.group('ActivityRankingService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
     const activityRankingService = new ActivityRankingService(weatherService, createMockMetrics())
 
     const activities = await activityRankingService.rankActivities(25, 0, 7)
@@ -91,15 +103,17 @@ test.group('ActivityRankingService - Edge Cases', () => {
       latitude: 40,
       longitude: 0,
       timezone: 'UTC',
-      dailyForecasts: Array.from({ length: 7 }, () =>
-        new DailyForecast({
-          date: new Date('2024-01-01'),
-          temperatureMax: 15,
-          temperatureMin: 10,
-          precipitation: 20,
-          windSpeed: 50,
-          weatherCode: 95,
-        })
+      dailyForecasts: Array.from(
+        { length: 7 },
+        () =>
+          new DailyForecast({
+            date: new Date('2024-01-01'),
+            temperatureMax: 15,
+            temperatureMin: 10,
+            precipitation: 20,
+            windSpeed: 50,
+            weatherCode: 95,
+          })
       ),
     })
 
@@ -115,7 +129,11 @@ test.group('ActivityRankingService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
     const activityRankingService = new ActivityRankingService(weatherService, createMockMetrics())
 
     const activities = await activityRankingService.rankActivities(40, 0, 7)
@@ -133,15 +151,17 @@ test.group('ActivityRankingService - Edge Cases', () => {
       latitude: 40,
       longitude: 0,
       timezone: 'UTC',
-      dailyForecasts: Array.from({ length: 7 }, () =>
-        new DailyForecast({
-          date: new Date('2024-05-15'),
-          temperatureMax: 22,
-          temperatureMin: 15,
-          precipitation: 0,
-          windSpeed: 10,
-          weatherCode: 0,
-        })
+      dailyForecasts: Array.from(
+        { length: 7 },
+        () =>
+          new DailyForecast({
+            date: new Date('2024-05-15'),
+            temperatureMax: 22,
+            temperatureMin: 15,
+            precipitation: 0,
+            windSpeed: 10,
+            weatherCode: 0,
+          })
       ),
     })
 
@@ -157,7 +177,11 @@ test.group('ActivityRankingService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
     const activityRankingService = new ActivityRankingService(weatherService, createMockMetrics())
 
     const activities = await activityRankingService.rankActivities(40, 0, 7)
@@ -196,7 +220,11 @@ test.group('ActivityRankingService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
     const activityRankingService = new ActivityRankingService(weatherService, createMockMetrics())
 
     const activities = await activityRankingService.rankActivities(40, 0, 1)
@@ -216,15 +244,17 @@ test.group('ActivityRankingService - Edge Cases', () => {
       latitude: 40,
       longitude: 0,
       timezone: 'UTC',
-      dailyForecasts: Array.from({ length: 16 }, (_, i) =>
-        new DailyForecast({
-          date: new Date(`2024-01-${i + 1}`),
-          temperatureMax: 15 + i,
-          temperatureMin: 5 + i,
-          precipitation: i % 3,
-          windSpeed: 10 + i,
-          weatherCode: i % 10,
-        })
+      dailyForecasts: Array.from(
+        { length: 16 },
+        (_, i) =>
+          new DailyForecast({
+            date: new Date(`2024-01-${i + 1}`),
+            temperatureMax: 15 + i,
+            temperatureMin: 5 + i,
+            precipitation: i % 3,
+            windSpeed: 10 + i,
+            weatherCode: i % 10,
+          })
       ),
     })
 
@@ -240,7 +270,11 @@ test.group('ActivityRankingService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
     const activityRankingService = new ActivityRankingService(weatherService, createMockMetrics())
 
     const activities = await activityRankingService.rankActivities(40, 0, 16)
@@ -256,15 +290,17 @@ test.group('ActivityRankingService - Edge Cases', () => {
       latitude: 40,
       longitude: 0,
       timezone: 'UTC',
-      dailyForecasts: Array.from({ length: 7 }, () =>
-        new DailyForecast({
-          date: new Date('2024-01-01'),
-          temperatureMax: 15,
-          temperatureMin: 10,
-          precipitation: 0,
-          windSpeed: 10,
-          weatherCode: 2,
-        })
+      dailyForecasts: Array.from(
+        { length: 7 },
+        () =>
+          new DailyForecast({
+            date: new Date('2024-01-01'),
+            temperatureMax: 15,
+            temperatureMin: 10,
+            precipitation: 0,
+            windSpeed: 10,
+            weatherCode: 2,
+          })
       ),
     })
 
@@ -280,7 +316,11 @@ test.group('ActivityRankingService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
     const activityRankingService = new ActivityRankingService(weatherService, createMockMetrics())
 
     const activities = await activityRankingService.rankActivities(40, 0, 7)
@@ -309,15 +349,17 @@ test.group('ActivityRankingService - Edge Cases', () => {
       latitude: 40,
       longitude: 0,
       timezone: 'UTC',
-      dailyForecasts: Array.from({ length: 7 }, () =>
-        new DailyForecast({
-          date: new Date('2024-01-01'),
-          temperatureMax: 20,
-          temperatureMin: 10,
-          precipitation: 0,
-          windSpeed: 10,
-          weatherCode: 0,
-        })
+      dailyForecasts: Array.from(
+        { length: 7 },
+        () =>
+          new DailyForecast({
+            date: new Date('2024-01-01'),
+            temperatureMax: 20,
+            temperatureMin: 10,
+            precipitation: 0,
+            windSpeed: 10,
+            weatherCode: 0,
+          })
       ),
     })
 
@@ -333,7 +375,11 @@ test.group('ActivityRankingService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
     const activityRankingService = new ActivityRankingService(weatherService, createMockMetrics())
 
     const activities = await activityRankingService.rankActivities(40, 0, 7)
@@ -348,15 +394,17 @@ test.group('ActivityRankingService - Edge Cases', () => {
       latitude: 40,
       longitude: 0,
       timezone: 'UTC',
-      dailyForecasts: Array.from({ length: 7 }, () =>
-        new DailyForecast({
-          date: new Date('2024-01-01'),
-          temperatureMax: 8,
-          temperatureMin: 2,
-          precipitation: 0,
-          windSpeed: 60,
-          weatherCode: 3,
-        })
+      dailyForecasts: Array.from(
+        { length: 7 },
+        () =>
+          new DailyForecast({
+            date: new Date('2024-01-01'),
+            temperatureMax: 8,
+            temperatureMin: 2,
+            precipitation: 0,
+            windSpeed: 60,
+            weatherCode: 3,
+          })
       ),
     })
 
@@ -372,7 +420,11 @@ test.group('ActivityRankingService - Edge Cases', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
     const activityRankingService = new ActivityRankingService(weatherService, createMockMetrics())
 
     const activities = await activityRankingService.rankActivities(40, 0, 7)
@@ -386,4 +438,3 @@ test.group('ActivityRankingService - Edge Cases', () => {
     assert.isTrue(outdoorActivity!.score <= 50)
   })
 })
-

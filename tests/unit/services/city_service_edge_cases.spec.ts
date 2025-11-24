@@ -44,14 +44,7 @@ test.group('CityService - Edge Cases', () => {
   })
 
   test('handles unicode and special characters in city names', async ({ assert }) => {
-    const unicodeQueries = [
-      'São Paulo',
-      '北京',
-      'Москва',
-      'München',
-      "O'Reilly",
-      'Saint-Jean',
-    ]
+    const unicodeQueries = ['São Paulo', '北京', 'Москва', 'München', "O'Reilly", 'Saint-Jean']
 
     const mockWeatherClient: IWeatherClient = {
       searchCities: async (query: string) => {
@@ -110,17 +103,19 @@ test.group('CityService - Edge Cases', () => {
   })
 
   test('handles limit of 1 correctly', async ({ assert }) => {
-    const mockCities = Array.from({ length: 10 }, (_, i) =>
-      new City({
-        id: i + 1,
-        name: `City${i}`,
-        country: 'Country',
-        countryCode: 'CC',
-        latitude: 0,
-        longitude: 0,
-        timezone: 'UTC',
-        population: 1000,
-      })
+    const mockCities = Array.from(
+      { length: 10 },
+      (_, i) =>
+        new City({
+          id: i + 1,
+          name: `City${i}`,
+          country: 'Country',
+          countryCode: 'CC',
+          latitude: 0,
+          longitude: 0,
+          timezone: 'UTC',
+          population: 1000,
+        })
     )
 
     const mockWeatherClient: IWeatherClient = {
@@ -144,17 +139,19 @@ test.group('CityService - Edge Cases', () => {
   })
 
   test('handles very large limit values', async ({ assert }) => {
-    const mockCities = Array.from({ length: 50 }, (_, i) =>
-      new City({
-        id: i + 1,
-        name: `City${i}`,
-        country: 'Country',
-        countryCode: 'CC',
-        latitude: 0,
-        longitude: 0,
-        timezone: 'UTC',
-        population: 1000,
-      })
+    const mockCities = Array.from(
+      { length: 50 },
+      (_, i) =>
+        new City({
+          id: i + 1,
+          name: `City${i}`,
+          country: 'Country',
+          countryCode: 'CC',
+          latitude: 0,
+          longitude: 0,
+          timezone: 'UTC',
+          population: 1000,
+        })
     )
 
     const mockWeatherClient: IWeatherClient = {
@@ -240,10 +237,9 @@ test.group('CityService - Edge Cases', () => {
 
     const cityService = new CityService(mockWeatherClient, mockCacheManager, createMockMetrics())
 
-    await assert.rejects(
-      async () => await cityService.searchCities('London'),
-      WeatherAPIException
-    )
+    await assert.rejects(async () => {
+      await cityService.searchCities('London')
+    }, WeatherAPIException as any)
   })
 
   test('handles network errors gracefully', async ({ assert }) => {
@@ -265,10 +261,9 @@ test.group('CityService - Edge Cases', () => {
 
     const cityService = new CityService(mockWeatherClient, mockCacheManager, createMockMetrics())
 
-    await assert.rejects(
-      async () => await cityService.searchCities('London'),
-      WeatherAPIException
-    )
+    await assert.rejects(async () => {
+      await cityService.searchCities('London')
+    }, WeatherAPIException as any)
   })
 
   test('handles empty results from API', async ({ assert }) => {
@@ -326,7 +321,9 @@ test.group('CityService - Edge Cases', () => {
 
     const cityService = new CityService(mockWeatherClient, mockCacheManager, createMockMetrics())
 
-    await assert.rejects(async () => await cityService.searchCities('London'), Error)
+    await assert.rejects(async () => {
+      await cityService.searchCities('London')
+    }, Error)
   })
 
   test('handles case-insensitive query matching', async ({ assert }) => {
@@ -432,4 +429,3 @@ test.group('CityService - Edge Cases', () => {
     assert.equal(capturedQuery, 'London')
   })
 })
-

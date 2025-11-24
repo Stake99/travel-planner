@@ -65,24 +65,14 @@ export default class CacheException extends AppError {
    * Create a CacheException for get operation failures
    */
   static getError(cacheKey: string, originalError: Error): CacheException {
-    return new CacheException(
-      `Failed to retrieve value from cache`,
-      'get',
-      cacheKey,
-      originalError
-    )
+    return new CacheException(`Failed to retrieve value from cache`, 'get', cacheKey, originalError)
   }
 
   /**
    * Create a CacheException for set operation failures
    */
   static setError(cacheKey: string, originalError: Error): CacheException {
-    return new CacheException(
-      `Failed to store value in cache`,
-      'set',
-      cacheKey,
-      originalError
-    )
+    return new CacheException(`Failed to store value in cache`, 'set', cacheKey, originalError)
   }
 
   /**

@@ -11,6 +11,7 @@ import CacheManager from '#clients/cache_manager'
 import MetricsManager from '#clients/metrics_manager'
 import { GraphQLFormattedError } from 'graphql'
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 /**
@@ -22,10 +23,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
  * @param options.playground - Enable GraphQL Playground (default: true in dev)
  * @returns Configured Apollo Server instance
  */
-export function createApolloServer(options?: {
-  introspection?: boolean
-  playground?: boolean
-}) {
+export function createApolloServer(options?: { introspection?: boolean; playground?: boolean }) {
   const typeDefs = readFileSync(join(__dirname, 'schema.graphql'), 'utf-8')
 
   const cacheManager = new CacheManager()

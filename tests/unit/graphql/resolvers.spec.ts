@@ -9,12 +9,9 @@ import { IWeatherClient } from '#clients/interfaces/weather_client_interface'
 import { ICacheManager } from '#clients/interfaces/cache_manager_interface'
 import { City } from '#models/city'
 import { WeatherForecast, DailyForecast } from '#models/weather'
-import { RankedActivity } from '#models/activity'
-import { ActivityType, Suitability, WeatherCondition } from '#types/enums'
 import ValidationException from '#exceptions/validation_exception'
 import WeatherAPIException from '#exceptions/weather_api_exception'
 import { createMockMetrics } from '../helpers/mock_metrics.js'
-import NotFoundException from '#exceptions/not_found_exception'
 import { GraphQLError } from 'graphql'
 
 test.group('CityResolver', (group) => {
@@ -112,7 +109,11 @@ test.group('WeatherResolver', (group) => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
     weatherResolver = new WeatherResolver(weatherService)
   })
 
@@ -210,7 +211,11 @@ test.group('ActivityResolver', (group) => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
     const activityRankingService = new ActivityRankingService(weatherService, createMockMetrics())
     activityResolver = new ActivityResolver(activityRankingService)
   })

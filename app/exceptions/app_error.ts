@@ -19,7 +19,12 @@ export default class AppError extends Error {
    */
   public readonly details?: Record<string, any>
 
-  constructor(message: string, statusCode: number = 500, code: string = 'INTERNAL_SERVER_ERROR', details?: Record<string, any>) {
+  constructor(
+    message: string,
+    statusCode: number = 500,
+    code: string = 'INTERNAL_SERVER_ERROR',
+    details?: Record<string, any>
+  ) {
     super(message)
     this.name = this.constructor.name
     this.statusCode = statusCode

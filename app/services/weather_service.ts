@@ -73,10 +73,7 @@ export class WeatherService {
       const forecast = await this.weatherClient.getWeatherForecast(latitude, longitude, days)
       const apiDuration = Date.now() - apiStartTime
 
-      logger.info(
-        { latitude, longitude, days, apiDuration },
-        'Weather forecast API call completed'
-      )
+      logger.info({ latitude, longitude, days, apiDuration }, 'Weather forecast API call completed')
       this.metrics.recordTiming('weather.forecast.api_call', apiDuration)
       await this.cacheManager.set(cacheKey, forecast, this.CACHE_TTL_SECONDS)
 
@@ -109,28 +106,20 @@ export class WeatherService {
    * @throws {ValidationException} If coordinates are out of valid range
    */
   private validateCoordinates(latitude: number, longitude: number): void {
-    if (typeof latitude !== 'number' || isNaN(latitude)) {
+    if (typeof latitude !== 'number' || Number.isNaN(latitude)) {
       throw ValidationException.invalidInput('latitude', latitude, 'must be a valid number')
     }
 
-    if (typeof longitude !== 'number' || isNaN(longitude)) {
+    if (typeof longitude !== 'number' || Number.isNaN(longitude)) {
       throw ValidationException.invalidInput('longitude', longitude, 'must be a valid number')
     }
 
     if (latitude < -90 || latitude > 90) {
-      throw ValidationException.invalidInput(
-        'latitude',
-        latitude,
-        'must be between -90 and 90'
-      )
+      throw ValidationException.invalidInput('latitude', latitude, 'must be between -90 and 90')
     }
 
     if (longitude < -180 || longitude > 180) {
-      throw ValidationException.invalidInput(
-        'longitude',
-        longitude,
-        'must be between -180 and 180'
-      )
+      throw ValidationException.invalidInput('longitude', longitude, 'must be between -180 and 180')
     }
   }
 

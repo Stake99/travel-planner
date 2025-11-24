@@ -41,11 +41,7 @@ export default class NotFoundException extends AppError {
    * Create a NotFoundException for a city that was not found
    */
   static city(cityId: number): NotFoundException {
-    return new NotFoundException(
-      `City not found: ${cityId}`,
-      'city',
-      cityId
-    )
+    return new NotFoundException(`City not found: ${cityId}`, 'city', cityId)
   }
 
   /**

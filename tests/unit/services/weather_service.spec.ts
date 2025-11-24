@@ -27,25 +27,26 @@ test.group('WeatherService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
     // Test latitude > 90
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(91, 0, 7),
-      ValidationException
-    )
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(91, 0, 7)
+    }, ValidationException as any)
 
     // Test latitude < -90
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(-91, 0, 7),
-      ValidationException
-    )
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(-91, 0, 7)
+    }, ValidationException as any)
 
     // Test NaN latitude
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(NaN, 0, 7),
-      ValidationException
-    )
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(Number.NaN, 0, 7)
+    }, ValidationException as any)
   })
 
   /**
@@ -67,25 +68,26 @@ test.group('WeatherService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
     // Test longitude > 180
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(0, 181, 7),
-      ValidationException
-    )
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(0, 181, 7)
+    }, ValidationException as any)
 
     // Test longitude < -180
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(0, -181, 7),
-      ValidationException
-    )
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(0, -181, 7)
+    }, ValidationException as any)
 
     // Test NaN longitude
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(0, NaN, 7),
-      ValidationException
-    )
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(0, Number.NaN, 7)
+    }, ValidationException as any)
   })
 
   /**
@@ -107,19 +109,21 @@ test.group('WeatherService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
     // Test days < 1
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(51.5, -0.1, 0),
-      ValidationException
-    )
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(51.5, -0.1, 0)
+    }, ValidationException as any)
 
     // Test days > 16
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(51.5, -0.1, 17),
-      ValidationException
-    )
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(51.5, -0.1, 17)
+    }, ValidationException as any)
   })
 
   /**
@@ -155,7 +159,11 @@ test.group('WeatherService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
     // Test boundary values
     await assert.doesNotReject(async () => await weatherService.getWeatherForecast(90, 180, 7))
@@ -196,10 +204,10 @@ test.group('WeatherService - Unit Tests', () => {
     }
 
     const mockCacheManager: ICacheManager = {
-      get: async (key: string) => {
+      get: async <T>(key: string): Promise<T | null> => {
         // Return cached forecast for specific coordinates
         if (key === 'weather:51.5000:-0.1000:7') {
-          return mockForecast
+          return mockForecast as T
         }
         return null
       },
@@ -208,7 +216,11 @@ test.group('WeatherService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
     // Call with coordinates that should hit cache
     const result = await weatherService.getWeatherForecast(51.5, -0.1, 7)
@@ -261,7 +273,11 @@ test.group('WeatherService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
     const result = await weatherService.getWeatherForecast(51.5, -0.1, 7)
 
@@ -293,12 +309,15 @@ test.group('WeatherService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
-
-    await assert.rejects(
-      async () => await weatherService.getWeatherForecast(51.5, -0.1, 7),
-      WeatherAPIException
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
     )
+
+    await assert.rejects(async () => {
+      await weatherService.getWeatherForecast(51.5, -0.1, 7)
+    }, WeatherAPIException as any)
   })
 
   /**
@@ -322,13 +341,17 @@ test.group('WeatherService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
     try {
       await weatherService.getWeatherForecast(51.5, -0.1, 7)
       assert.fail('Should have thrown WeatherAPIException')
     } catch (error) {
-      assert.instanceOf(error, WeatherAPIException)
+      assert.instanceOf(error, WeatherAPIException as any)
       assert.equal(error, originalException)
     }
   })
@@ -371,7 +394,11 @@ test.group('WeatherService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
     // Call with slightly different precision (should round to same key)
     await weatherService.getWeatherForecast(51.50740001, -0.12780001, 7)
@@ -420,7 +447,11 @@ test.group('WeatherService - Unit Tests', () => {
       clear: async () => {},
     }
 
-    const weatherService = new WeatherService(mockWeatherClient, mockCacheManager, createMockMetrics())
+    const weatherService = new WeatherService(
+      mockWeatherClient,
+      mockCacheManager,
+      createMockMetrics()
+    )
 
     await weatherService.getWeatherForecast(51.5, -0.1, 7)
     await weatherService.getWeatherForecast(51.5, -0.1, 14)

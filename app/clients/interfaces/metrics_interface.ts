@@ -2,6 +2,7 @@
  * Interface for metrics tracking and observability.
  * Provides methods for recording counters, timings, and other metrics.
  */
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export interface IMetrics {
   /**
    * Increment a counter metric

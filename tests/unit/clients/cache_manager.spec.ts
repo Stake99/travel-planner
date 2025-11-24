@@ -124,9 +124,7 @@ test.group('CacheManager - Property-Based Tests', () => {
   /**
    * Additional property: Cache overwrite - setting the same key twice updates the value
    */
-  test('Property: Cache overwrite - setting a key twice updates the value', async ({
-    assert,
-  }) => {
+  test('Property: Cache overwrite - setting a key twice updates the value', async ({ assert }) => {
     await fc.assert(
       fc.asyncProperty(
         fc.string({ minLength: 1 }),
