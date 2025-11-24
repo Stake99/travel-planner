@@ -1174,7 +1174,7 @@ AI tools were used as productivity accelerators with careful oversight, ensuring
 
 ## Omissions and Trade-offs
 
-Due to time constraints (2-3 hour scope), the following features were omitted or simplified:
+Due to time constraints, the following features were omitted or simplified:
 
 ### Omitted Features
 
