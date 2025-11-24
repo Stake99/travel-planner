@@ -10,6 +10,18 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    env:
+      TZ: ${{ vars.TZ }}
+      PORT: ${{ vars.PORT }}
+      HOST: ${{ vars.HOST }}
+      LOG_LEVEL: ${{ vars.LOG_LEVEL }}
+      APP_KEY: ${{ vars.APP_KEY }}
+      NODE_ENV: ${{ vars.NODE_ENV }}
+      DB_HOST: ${{ vars.DB_HOST }}
+      DB_PORT: ${{ vars.DB_PORT }}
+      DB_USER: ${{ vars.DB_USER }}
+      DB_PASSWORD: ${{ vars.DB_PASSWORD }}
+      DB_DATABASE: ${{ vars.DB_DATABASE }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
