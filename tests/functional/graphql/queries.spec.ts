@@ -26,7 +26,7 @@ test.group('GraphQL Integration - searchCities', () => {
       }
     `
 
-    const response = await client.post('/graphql').json({ query })
+    const response = await client.post('/v1/api/graphql').json({ query })
 
     response.assertStatus(200)
     response.assertBodyContains({
@@ -77,7 +77,7 @@ test.group('GraphQL Integration - searchCities', () => {
       }
     `
 
-    const response = await client.post('/graphql').json({ query })
+    const response = await client.post('/v1/api/graphql').json({ query })
 
     response.assertStatus(200)
     response.assertBodyContains({
@@ -97,7 +97,7 @@ test.group('GraphQL Integration - searchCities', () => {
       }
     `
 
-    const response = await client.post('/graphql').json({ query })
+    const response = await client.post('/v1/api/graphql').json({ query })
 
     response.assertStatus(200)
 
@@ -120,7 +120,7 @@ test.group('GraphQL Integration - searchCities', () => {
       }
     `
 
-    const response = await client.post('/graphql').json({ query })
+    const response = await client.post('/v1/api/graphql').json({ query })
 
     response.assertStatus(200)
 
@@ -155,7 +155,7 @@ test.group('GraphQL Integration - getWeatherForecast', () => {
       }
     `
 
-    const response = await client.post('/graphql').json({ query })
+    const response = await client.post('/v1/api/graphql').json({ query })
 
     response.assertStatus(200)
 
@@ -214,7 +214,7 @@ test.group('GraphQL Integration - getWeatherForecast', () => {
       }
     `
 
-    const response = await client.post('/graphql').json({ query })
+    const response = await client.post('/v1/api/graphql').json({ query })
 
     response.assertStatus(200)
 
@@ -240,7 +240,7 @@ test.group('GraphQL Integration - getWeatherForecast', () => {
       }
     `
 
-    const response = await client.post('/graphql').json({ query })
+    const response = await client.post('/v1/api/graphql').json({ query })
 
     response.assertStatus(200)
 
@@ -265,7 +265,7 @@ test.group('GraphQL Integration - getWeatherForecast', () => {
       }
     `
 
-    const response = await client.post('/graphql').json({ query })
+    const response = await client.post('/v1/api/graphql').json({ query })
 
     response.assertStatus(200)
 
@@ -296,7 +296,7 @@ test.group('GraphQL Integration - getActivityRecommendations', () => {
       }
     `
 
-    const response = await client.post('/graphql').json({ query })
+    const response = await client.post('/v1/api/graphql').json({ query })
 
     response.assertStatus(200)
 
@@ -320,7 +320,7 @@ test.group('GraphQL Integration - getActivityRecommendations', () => {
       }
     `
 
-    const response = await client.post('/graphql').json({ query })
+    const response = await client.post('/v1/api/graphql').json({ query })
 
     response.assertStatus(200)
 
@@ -345,7 +345,7 @@ test.group('GraphQL Integration - Error Structure', () => {
       }
     `
 
-    const response = await client.post('/graphql').json({ query })
+    const response = await client.post('/v1/api/graphql').json({ query })
 
     response.assertStatus(200)
 
@@ -380,7 +380,7 @@ test.group('GraphQL Integration - Error Structure', () => {
       }
     `
 
-    const response = await client.post('/graphql').json({ query })
+    const response = await client.post('/v1/api/graphql').json({ query })
 
     response.assertStatus(200)
 
@@ -427,19 +427,13 @@ test.group('GraphQL Integration - Health Check', () => {
 
 test.group('GraphQL Integration - Playground', () => {
 
-  test('should return GraphQL playground HTML on GET request', async ({ client }) => {
-    const response = await client.get('/graphql')
+  test('should return error message for GET request without query', async ({ client, assert }) => {
+    const response = await client.get('/v1/api/graphql')
 
-    response.assertStatus(200)
-    
-    const contentType = response.headers()['content-type']
-    if (contentType && contentType.includes('text/html')) {
-      // Has HTML content type
-    }
-
-    const body = response.text()
-    if (body.includes('GraphQL')) {
-      // Contains GraphQL text
-    }
+    response.assertStatus(400)
+    const body = response.body()
+    assert.isDefined(body.errors)
+    assert.isTrue(body.errors.length > 0)
+    assert.include(body.errors[0].message, 'Must provide query string')
   })
 })

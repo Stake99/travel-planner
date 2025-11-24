@@ -7,7 +7,6 @@ import { ActivityRankingService } from '#services/activity_ranking_service'
 
 /**
  * Create resolver instances with dependency injection.
- * This function should be called with service instances from the IoC container.
  *
  * @param cityService - City service instance
  * @param weatherService - Weather service instance
@@ -62,11 +61,9 @@ export function createResolverMap(
     },
     DailyForecast: {
       weatherCondition: (parent: any) => {
-        // parent is a DailyForecast instance, call getWeatherCondition() method
         return parent.getWeatherCondition()
       },
       date: (parent: any) => {
-        // Convert Date object to ISO string for GraphQL
         if (parent.date instanceof Date) {
           return parent.date.toISOString().split('T')[0]
         }
@@ -76,5 +73,4 @@ export function createResolverMap(
   }
 }
 
-// Export resolver classes for testing
 export { CityResolver, WeatherResolver, ActivityResolver }

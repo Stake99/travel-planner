@@ -11,9 +11,6 @@ import logger from '@adonisjs/core/services/logger'
  * Handles coordinate validation, caching, and weather code mapping.
  */
 export class WeatherService {
-  /**
-   * Cache TTL for weather forecasts (30 minutes)
-   */
   private readonly CACHE_TTL_SECONDS = 1800
 
   constructor(
@@ -42,7 +39,6 @@ export class WeatherService {
     logger.info({ latitude, longitude, days }, 'Weather forecast requested')
     this.metrics.incrementCounter('weather.forecast.requests')
 
-    // Validate coordinates
     try {
       this.validateCoordinates(latitude, longitude)
     } catch (error) {
@@ -51,17 +47,13 @@ export class WeatherService {
       throw error
     }
 
-    // Validate days parameter
     if (days < 1 || days > 16) {
       logger.warn({ days }, 'Invalid days parameter provided')
       this.metrics.incrementCounter('weather.forecast.validation_error')
       throw ValidationException.invalidInput('days', days, 'must be between 1 and 16')
     }
 
-    // Generate cache key
     const cacheKey = this.generateCacheKey(latitude, longitude, days)
-
-    // Check cache first
     const cached = await this.cacheManager.get<WeatherForecast>(cacheKey)
     if (cached) {
       logger.info({ latitude, longitude, days }, 'Weather forecast cache hit')
@@ -76,7 +68,6 @@ export class WeatherService {
     logger.info({ latitude, longitude, days }, 'Weather forecast cache miss, fetching from API')
     this.metrics.incrementCounter('weather.forecast.cache_miss')
 
-    // Fetch from API
     try {
       const apiStartTime = Date.now()
       const forecast = await this.weatherClient.getWeatherForecast(latitude, longitude, days)
@@ -87,8 +78,6 @@ export class WeatherService {
         'Weather forecast API call completed'
       )
       this.metrics.recordTiming('weather.forecast.api_call', apiDuration)
-
-      // Cache the result
       await this.cacheManager.set(cacheKey, forecast, this.CACHE_TTL_SECONDS)
 
       const totalDuration = Date.now() - startTime
@@ -101,12 +90,10 @@ export class WeatherService {
       logger.error({ latitude, longitude, days, error }, 'Weather forecast API call failed')
       this.metrics.incrementCounter('weather.forecast.api_error')
 
-      // Re-throw known exceptions
       if (error instanceof WeatherAPIException || error instanceof ValidationException) {
         throw error
       }
 
-      // Wrap unexpected errors
       throw new WeatherAPIException(
         'Failed to fetch weather forecast',
         error instanceof Error ? error : undefined
@@ -122,7 +109,6 @@ export class WeatherService {
    * @throws {ValidationException} If coordinates are out of valid range
    */
   private validateCoordinates(latitude: number, longitude: number): void {
-    // Check if values are numbers
     if (typeof latitude !== 'number' || isNaN(latitude)) {
       throw ValidationException.invalidInput('latitude', latitude, 'must be a valid number')
     }
@@ -131,7 +117,6 @@ export class WeatherService {
       throw ValidationException.invalidInput('longitude', longitude, 'must be a valid number')
     }
 
-    // Check latitude range
     if (latitude < -90 || latitude > 90) {
       throw ValidationException.invalidInput(
         'latitude',
@@ -140,7 +125,6 @@ export class WeatherService {
       )
     }
 
-    // Check longitude range
     if (longitude < -180 || longitude > 180) {
       throw ValidationException.invalidInput(
         'longitude',
@@ -159,7 +143,6 @@ export class WeatherService {
    * @returns Cache key string
    */
   private generateCacheKey(latitude: number, longitude: number, days: number): string {
-    // Round coordinates to 4 decimal places for cache key consistency
     const lat = latitude.toFixed(4)
     const lon = longitude.toFixed(4)
     return `weather:${lat}:${lon}:${days}`

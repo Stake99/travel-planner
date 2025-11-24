@@ -21,7 +21,6 @@ export class City {
     timezone: string
     population?: number
   }) {
-    // Validate required fields
     if (!data.id) {
       throw new Error('City id is required')
     }
@@ -44,7 +43,6 @@ export class City {
       throw new Error('City timezone is required')
     }
 
-    // Validate coordinate ranges
     if (data.latitude < -90 || data.latitude > 90) {
       throw new Error('City latitude must be between -90 and 90')
     }
@@ -52,7 +50,6 @@ export class City {
       throw new Error('City longitude must be between -180 and 180')
     }
 
-    // Validate population if provided
     if (data.population !== undefined && data.population < 0) {
       throw new Error('City population must be non-negative')
     }

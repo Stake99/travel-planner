@@ -36,7 +36,6 @@ export class WeatherResolver {
     try {
       const { latitude, longitude, days = 7 } = args.input
 
-      // Validate days parameter
       if (days < 1 || days > 16) {
         throw new ValidationException(
           'Days must be between 1 and 16',
@@ -45,7 +44,6 @@ export class WeatherResolver {
         )
       }
 
-      // Execute weather forecast retrieval
       const forecast = await this.weatherService.getWeatherForecast(
         latitude,
         longitude,
@@ -54,7 +52,6 @@ export class WeatherResolver {
 
       return forecast
     } catch (error) {
-      // Translate application errors to GraphQL errors
       if (error instanceof ValidationException) {
         throw new GraphQLError(error.message, {
           extensions: {
@@ -88,7 +85,6 @@ export class WeatherResolver {
         })
       }
 
-      // Unexpected errors
       throw new GraphQLError('An unexpected error occurred', {
         extensions: {
           code: 'INTERNAL_SERVER_ERROR',

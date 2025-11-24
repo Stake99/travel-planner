@@ -33,18 +33,13 @@ export class ActivityRankingService {
     logger.info({ latitude, longitude, days }, 'Activity ranking requested')
     this.metrics.incrementCounter('activity.ranking.requests')
 
-    // Fetch weather forecast
     const forecast = await this.weatherService.getWeatherForecast(latitude, longitude, days)
-
-    // Calculate scores for each activity across all days
     const dailyScores = new Map<ActivityType, number[]>()
 
-    // Initialize score arrays for each activity
     for (const activityType of Object.values(ActivityType)) {
       dailyScores.set(activityType, [])
     }
 
-    // Score each activity for each day
     for (const dailyForecast of forecast.dailyForecasts) {
       dailyScores.get(ActivityType.SKIING)!.push(this.scoreSkiing(dailyForecast))
       dailyScores.get(ActivityType.SURFING)!.push(this.scoreSurfing(dailyForecast))
@@ -56,10 +51,7 @@ export class ActivityRankingService {
         .push(this.scoreOutdoorSightseeing(dailyForecast))
     }
 
-    // Aggregate scores across all days
     const aggregatedScores = this.aggregateScores(dailyScores)
-
-    // Create ranked activities with reasons
     const rankedActivities: RankedActivity[] = []
 
     for (const entry of Array.from(aggregatedScores.entries())) {
@@ -68,12 +60,10 @@ export class ActivityRankingService {
       rankedActivities.push(new RankedActivity(activityType, score, reason))
     }
 
-    // Sort by score (descending), with deterministic tie-breaking by enum order
     rankedActivities.sort((a, b) => {
       if (b.score !== a.score) {
         return b.score - a.score
       }
-      // Tie-breaking: use enum order (SKIING, SURFING, INDOOR_SIGHTSEEING, OUTDOOR_SIGHTSEEING)
       return (
         Object.values(ActivityType).indexOf(a.type) -
         Object.values(ActivityType).indexOf(b.type)
@@ -106,26 +96,23 @@ export class ActivityRankingService {
    * @returns Score from 0-100
    */
   private scoreSkiing(forecast: DailyForecast): number {
-    let score = 50 // Base score
+    let score = 50
 
-    // Temperature scoring
     if (forecast.temperatureMax < 0) {
-      score += 30 // Ideal skiing temperature
+      score += 30
     } else if (forecast.temperatureMax <= 5) {
-      score += 20 // Good skiing temperature
+      score += 20
     } else if (forecast.temperatureMax > 15) {
-      score -= 20 // Too warm for skiing
+      score -= 20
     }
 
-    // Weather condition scoring
     const condition = forecast.getWeatherCondition()
     if (condition === WeatherCondition.SNOWY) {
-      score += 20 // Fresh snow is ideal
+      score += 20
     }
 
-    // Precipitation scoring (snow)
     if (forecast.precipitation > 5) {
-      score += 10 // More snow is better
+      score += 10
     }
 
     return Math.max(0, Math.min(100, score))
@@ -139,25 +126,22 @@ export class ActivityRankingService {
    * @returns Score from 0-100
    */
   private scoreSurfing(forecast: DailyForecast): number {
-    let score = 50 // Base score
+    let score = 50
 
-    // Temperature scoring
     if (forecast.temperatureMax > 20) {
-      score += 30 // Warm water/air temperature
+      score += 30
     } else if (forecast.temperatureMax >= 15) {
-      score += 20 // Acceptable temperature
+      score += 20
     }
 
-    // Precipitation scoring
     if (forecast.precipitation > 5) {
-      score -= 30 // Heavy rain is unpleasant
+      score -= 30
     }
 
-    // Wind scoring
     if (forecast.windSpeed > 30) {
-      score -= 20 // Too windy, dangerous
+      score -= 20
     } else if (forecast.windSpeed >= 10 && forecast.windSpeed <= 20) {
-      score += 10 // Good wind for waves
+      score += 10
     }
 
     return Math.max(0, Math.min(100, score))
@@ -171,25 +155,22 @@ export class ActivityRankingService {
    * @returns Score from 40-100 (always somewhat viable)
    */
   private scoreIndoorSightseeing(forecast: DailyForecast): number {
-    let score = 60 // Higher base score (always viable)
+    let score = 60
 
-    // Precipitation scoring
     if (forecast.precipitation > 5) {
-      score += 30 // Rain makes indoor activities more appealing
+      score += 30
     }
 
-    // Temperature scoring
     if (forecast.temperatureMax < 5 || forecast.temperatureMax > 35) {
-      score += 20 // Extreme temperatures favor indoor
+      score += 20
     }
 
-    // Weather condition scoring
     const condition = forecast.getWeatherCondition()
     if (condition === WeatherCondition.STORMY) {
-      score += 10 // Storms make outdoor dangerous
+      score += 10
     }
 
-    return Math.max(40, Math.min(100, score)) // Minimum 40 (always somewhat viable)
+    return Math.max(40, Math.min(100, score))
   }
 
   /**
@@ -200,32 +181,28 @@ export class ActivityRankingService {
    * @returns Score from 0-100
    */
   private scoreOutdoorSightseeing(forecast: DailyForecast): number {
-    let score = 50 // Base score
+    let score = 50
 
-    // Temperature scoring (ideal range)
     if (forecast.temperatureMax >= 15 && forecast.temperatureMax <= 25) {
-      score += 30 // Perfect temperature
+      score += 30
     } else if (
       (forecast.temperatureMax >= 10 && forecast.temperatureMax < 15) ||
       (forecast.temperatureMax > 25 && forecast.temperatureMax <= 30)
     ) {
-      score += 20 // Acceptable temperature
+      score += 20
     }
 
-    // Precipitation scoring
     if (forecast.precipitation > 2) {
-      score -= 30 // Rain ruins outdoor sightseeing
+      score -= 30
     }
 
-    // Wind scoring
     if (forecast.windSpeed > 40) {
-      score -= 20 // Too windy to enjoy
+      score -= 20
     }
 
-    // Weather condition scoring
     const condition = forecast.getWeatherCondition()
     if (condition === WeatherCondition.CLEAR || condition === WeatherCondition.PARTLY_CLOUDY) {
-      score += 10 // Nice weather bonus
+      score += 10
     }
 
     return Math.max(0, Math.min(100, score))
@@ -263,14 +240,11 @@ export class ActivityRankingService {
     score: number,
     forecasts: DailyForecast[]
   ): string {
-    // Calculate average conditions
     const avgTemp =
       forecasts.reduce((sum, f) => sum + f.temperatureMax, 0) / forecasts.length
     const avgPrecip =
       forecasts.reduce((sum, f) => sum + f.precipitation, 0) / forecasts.length
     const avgWind = forecasts.reduce((sum, f) => sum + f.windSpeed, 0) / forecasts.length
-
-    // Count weather conditions
     const snowyDays = forecasts.filter(
       (f) => f.getWeatherCondition() === WeatherCondition.SNOWY
     ).length

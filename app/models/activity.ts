@@ -10,7 +10,6 @@ export class RankedActivity {
   public readonly reason: string
 
   constructor(type: ActivityType, score: number, reason: string) {
-    // Validate required fields
     if (!type) {
       throw new Error('RankedActivity type is required')
     }
@@ -21,12 +20,10 @@ export class RankedActivity {
       throw new Error('RankedActivity reason is required')
     }
 
-    // Validate score range
     if (score < 0 || score > 100) {
       throw new Error('RankedActivity score must be between 0 and 100')
     }
 
-    // Validate activity type
     if (!Object.values(ActivityType).includes(type)) {
       throw new Error(`Invalid activity type: ${type}`)
     }

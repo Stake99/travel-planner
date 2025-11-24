@@ -74,7 +74,6 @@ export default class CacheManager implements ICacheManager {
 
     logger.debug({ key, ttlSeconds, cacheSize: this.cache.size }, 'Cache entry stored')
 
-    // Trigger cleanup if cache is getting too large
     if (this.cache.size > this.maxSize) {
       logger.info({ cacheSize: this.cache.size, maxSize: this.maxSize }, 'Cache cleanup triggered')
       this.cleanup()

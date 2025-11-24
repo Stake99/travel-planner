@@ -65,12 +65,10 @@ export class OpenMeteoClient implements IWeatherClient {
         'OpenMeteo geocoding API call successful'
       )
 
-      // Handle empty results
       if (!response.data.results || response.data.results.length === 0) {
         return []
       }
 
-      // Transform API results to City domain models
       return response.data.results.map((result) => this.transformCityResult(result))
     } catch (error) {
       const duration = Date.now() - startTime
@@ -117,7 +115,6 @@ export class OpenMeteoClient implements IWeatherClient {
         'OpenMeteo weather API call successful'
       )
 
-      // Validate response structure
       if (!response.data || !response.data.daily) {
         throw WeatherAPIException.malformedResponse(
           endpoint,
@@ -127,7 +124,6 @@ export class OpenMeteoClient implements IWeatherClient {
 
       const { daily } = response.data
 
-      // Validate all required arrays are present and have the same length
       if (
         !daily.time ||
         !daily.temperature_2m_max ||
@@ -156,7 +152,6 @@ export class OpenMeteoClient implements IWeatherClient {
         )
       }
 
-      // Transform API response to domain models
       return this.transformWeatherResponse(response.data)
     } catch (error) {
       const duration = Date.now() - startTime
@@ -165,7 +160,6 @@ export class OpenMeteoClient implements IWeatherClient {
         'OpenMeteo weather API call failed'
       )
 
-      // Re-throw WeatherAPIException as-is
       if (error instanceof WeatherAPIException) {
         throw error
       }
@@ -230,31 +224,25 @@ export class OpenMeteoClient implements IWeatherClient {
    * @returns WeatherAPIException with appropriate context
    */
   private handleApiError(error: unknown, endpoint: string): WeatherAPIException {
-    // Handle Axios errors
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError
 
-      // Timeout error
       if (axiosError.code === 'ECONNABORTED') {
         return WeatherAPIException.timeout(endpoint, this.timeout)
       }
 
-      // Network error (no response received)
       if (!axiosError.response) {
         return WeatherAPIException.networkError(axiosError, endpoint)
       }
 
-      // HTTP error responses
       const status = axiosError.response.status
       const responseData = axiosError.response.data as any
 
-      // 4xx errors - client errors (invalid parameters)
       if (status >= 400 && status < 500) {
         const message = responseData?.reason || responseData?.message || 'Invalid request'
         return WeatherAPIException.apiError(status, message, endpoint)
       }
 
-      // 5xx errors - server errors
       if (status >= 500) {
         return WeatherAPIException.apiError(
           status,
@@ -263,11 +251,9 @@ export class OpenMeteoClient implements IWeatherClient {
         )
       }
 
-      // Other HTTP errors
       return WeatherAPIException.apiError(status, 'Unexpected API error', endpoint)
     }
 
-    // Handle non-Axios errors
     if (error instanceof Error) {
       return new WeatherAPIException(
         `Unexpected error communicating with OpenMeteo API: ${error.message}`,
@@ -276,7 +262,6 @@ export class OpenMeteoClient implements IWeatherClient {
       )
     }
 
-    // Unknown error type
     return new WeatherAPIException(
       'Unknown error occurred while communicating with OpenMeteo API',
       undefined,

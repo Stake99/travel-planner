@@ -19,7 +19,6 @@ export class DailyForecast {
     windSpeed: number
     weatherCode: number
   }) {
-    // Validate required fields
     if (!data.date) {
       throw new Error('DailyForecast date is required')
     }
@@ -39,7 +38,6 @@ export class DailyForecast {
       throw new Error('DailyForecast weatherCode is required')
     }
 
-    // Validate ranges
     if (data.precipitation < 0) {
       throw new Error('DailyForecast precipitation must be non-negative')
     }
@@ -47,7 +45,6 @@ export class DailyForecast {
       throw new Error('DailyForecast windSpeed must be non-negative')
     }
 
-    // Convert date string to Date object if needed
     this.date = typeof data.date === 'string' ? new Date(data.date) : data.date
     this.temperatureMax = data.temperatureMax
     this.temperatureMin = data.temperatureMin
@@ -86,7 +83,6 @@ export class DailyForecast {
       return WeatherCondition.STORMY
     }
 
-    // Default to cloudy for unknown codes
     return WeatherCondition.CLOUDY
   }
 }
@@ -106,7 +102,6 @@ export class WeatherForecast {
     timezone: string
     dailyForecasts: DailyForecast[]
   }) {
-    // Validate required fields
     if (data.latitude === undefined || data.latitude === null) {
       throw new Error('WeatherForecast latitude is required')
     }
@@ -123,7 +118,6 @@ export class WeatherForecast {
       throw new Error('WeatherForecast must have at least one daily forecast')
     }
 
-    // Validate coordinate ranges
     if (data.latitude < -90 || data.latitude > 90) {
       throw new Error('WeatherForecast latitude must be between -90 and 90')
     }

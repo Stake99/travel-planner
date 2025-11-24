@@ -27,7 +27,6 @@ export class CityResolver {
     try {
       const { query, limit = 10 } = args
 
-      // Validate limit parameter
       if (limit < 1 || limit > 100) {
         throw new ValidationException(
           'Limit must be between 1 and 100',
@@ -36,12 +35,10 @@ export class CityResolver {
         )
       }
 
-      // Execute city search
       const cities = await this.cityService.searchCities(query, limit)
 
       return cities
     } catch (error) {
-      // Translate application errors to GraphQL errors
       if (error instanceof ValidationException) {
         throw new GraphQLError(error.message, {
           extensions: {
@@ -75,7 +72,6 @@ export class CityResolver {
         })
       }
 
-      // Unexpected errors
       throw new GraphQLError('An unexpected error occurred', {
         extensions: {
           code: 'INTERNAL_SERVER_ERROR',

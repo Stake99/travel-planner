@@ -9,7 +9,7 @@ import logger from '@adonisjs/core/services/logger'
  * Orchestrates city search with caching and result ordering.
  */
 export class CityService {
-  private readonly CACHE_TTL_SECONDS = 3600 // 1 hour
+  private readonly CACHE_TTL_SECONDS = 3600
   private readonly CACHE_KEY_PREFIX = 'city:search:'
 
   constructor(
@@ -31,27 +31,21 @@ export class CityService {
     logger.info({ query, limit }, 'City search requested')
     this.metrics.incrementCounter('city.search.requests')
 
-    // Handle empty query - return empty array per requirements 1.3
     if (!query || query.trim().length === 0) {
       logger.debug('Empty query provided, returning empty results')
       this.metrics.incrementCounter('city.search.empty_query')
       return []
     }
 
-    // Sanitize the query for consistent caching and safe API calls
     const sanitizedQuery = this.sanitizeQuery(query)
 
-    // Return empty array if sanitization results in empty string
     if (sanitizedQuery.length === 0) {
       logger.debug({ originalQuery: query }, 'Query sanitization resulted in empty string')
       this.metrics.incrementCounter('city.search.invalid_query')
       return []
     }
 
-    // Generate cache key
     const cacheKey = this.generateCacheKey(sanitizedQuery)
-
-    // Check cache first
     const cachedResults = await this.cacheManager.get<City[]>(cacheKey)
     if (cachedResults) {
       logger.info(
@@ -63,14 +57,12 @@ export class CityService {
       const duration = Date.now() - startTime
       this.metrics.recordTiming('city.search.duration', duration, { cache: 'hit' })
 
-      // Return limited results from cache
       return cachedResults.slice(0, limit)
     }
 
     logger.info({ query: sanitizedQuery }, 'City search cache miss, fetching from API')
     this.metrics.incrementCounter('city.search.cache_miss')
 
-    // Cache miss - fetch from API
     const apiStartTime = Date.now()
     const cities = await this.weatherClient.searchCities(sanitizedQuery)
     const apiDuration = Date.now() - apiStartTime
@@ -81,10 +73,7 @@ export class CityService {
     )
     this.metrics.recordTiming('city.search.api_call', apiDuration)
 
-    // Order results by relevance
     const orderedCities = this.orderByRelevance(cities, sanitizedQuery)
-
-    // Cache the ordered results
     await this.cacheManager.set(cacheKey, orderedCities, this.CACHE_TTL_SECONDS)
 
     const totalDuration = Date.now() - startTime
@@ -95,29 +84,19 @@ export class CityService {
       'City search completed'
     )
 
-    // Return limited results
     return orderedCities.slice(0, limit)
   }
 
   /**
    * Sanitize search query to remove special characters and normalize input.
-   * Handles special characters gracefully per requirements 1.5.
    *
    * @param query - Raw search query
    * @returns Sanitized query string
    */
   private sanitizeQuery(query: string): string {
-    // Trim whitespace
     let sanitized = query.trim()
-
-    // Remove special characters that could cause API issues
-    // Keep letters, numbers, spaces, hyphens, and apostrophes (common in city names)
     sanitized = sanitized.replace(/[^a-zA-Z0-9\s\-']/g, '')
-
-    // Collapse multiple spaces into single space
     sanitized = sanitized.replace(/\s+/g, ' ')
-
-    // Trim again after replacements
     sanitized = sanitized.trim()
 
     return sanitized
@@ -126,7 +105,6 @@ export class CityService {
   /**
    * Order cities by relevance to the search query.
    * Exact matches come first, then ordered by population.
-   * Per requirements 1.1, 1.2.
    *
    * @param cities - Array of cities to order
    * @param query - The search query (sanitized)
@@ -138,15 +116,12 @@ export class CityService {
     return cities.sort((a, b) => {
       const aNameLower = a.name.toLowerCase()
       const bNameLower = b.name.toLowerCase()
-
-      // Exact match comes first
       const aExactMatch = aNameLower === queryLower
       const bExactMatch = bNameLower === queryLower
 
       if (aExactMatch && !bExactMatch) return -1
       if (!aExactMatch && bExactMatch) return 1
 
-      // Then by population (descending) - cities with higher population are more relevant
       const aPopulation = a.population || 0
       const bPopulation = b.population || 0
 
@@ -154,7 +129,6 @@ export class CityService {
         return bPopulation - aPopulation
       }
 
-      // If population is the same, maintain stable sort by name
       return aNameLower.localeCompare(bNameLower)
     })
   }

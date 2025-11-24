@@ -26,10 +26,8 @@ export function createApolloServer(options?: {
   introspection?: boolean
   playground?: boolean
 }) {
-  // Load GraphQL schema from file
   const typeDefs = readFileSync(join(__dirname, 'schema.graphql'), 'utf-8')
 
-  // Create service instances with dependency injection
   const cacheManager = new CacheManager()
   const metricsManager = new MetricsManager()
   const weatherClient = new OpenMeteoClient()
@@ -37,16 +35,13 @@ export function createApolloServer(options?: {
   const weatherService = new WeatherService(weatherClient, cacheManager, metricsManager)
   const activityRankingService = new ActivityRankingService(weatherService, metricsManager)
 
-  // Create resolver map
   const resolvers = createResolverMap(cityService, weatherService, activityRankingService)
 
-  // Create Apollo Server
   const server = new ApolloServer({
     typeDefs,
     resolvers,
     introspection: options?.introspection ?? true,
     formatError: (formattedError: GraphQLFormattedError) => {
-      // Custom error formatting for consistent error responses
       return {
         message: formattedError.message,
         extensions: {
