@@ -1,102 +1,71 @@
-name: CI
+name: Deploy to EC2
 
 on:
   push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
-  lint:
-    name: Lint
+  deploy:
+    name: Deploy to Production
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run ESLint
-        run: npm run lint
-
-  typecheck:
-    name: Type Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run TypeScript compiler
-        run: npm run typecheck
-
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: npm test
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        if: always()
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/coverage-final.json
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build application
-        run: npm run build
-
-      - name: Verify build artifacts
+      - name: Setup SSH key
         run: |
-          if [ ! -d "build" ]; then
-            echo "Build directory not found"
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > key.pem
+          chmod 600 key.pem
+
+      - name: Deploy to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -i key.pem \
+          ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
+            
+            echo '--- Switching to travel-planner directory ---'
+            cd ~/travel-planner || exit 1
+
+            echo '--- Pulling latest code ---'
+            git pull origin main
+
+            echo '--- Installing Node v24.11.1 ---'
+            curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+
+            echo 'Node version: $(node -v)'
+            echo 'NPM version: $(npm -v)'
+
+            echo '--- Cleaning dependencies ---'
+            rm -rf node_modules package-lock.json
+
+            echo '--- Installing dependencies ---'
+            npm install
+
+            echo '--- Restarting PM2 app ---'
+            pm2 restart travel-planner || pm2 start ecosystem.config.js --name travel-planner
+
+            echo '--- Starting Nginx (if required) ---'
+            sudo systemctl restart nginx
+
+            echo '--- Attempting certbot renew ---'
+            sudo certbot renew --quiet
+
+            echo '--- Deployment steps finished ---'
+          "
+
+      - name: Health Check
+        run: |
+          echo "Waiting for API to come up..."
+          sleep 10
+
+          echo "Checking health endpoint..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.DOMAIN }}/health)
+
+          if [ "$STATUS" -ne 200 ]; then
+            echo "Health check FAILED with status $STATUS"
             exit 1
+          else
+            echo "Health check PASSED ✔ Service is healthy."
           fi
-          echo "Build completed successfully"
