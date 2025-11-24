@@ -11,17 +11,17 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     env:
-      TZ: ${{ vars.TZ }}
-      PORT: ${{ vars.PORT }}
-      HOST: ${{ vars.HOST }}
-      LOG_LEVEL: ${{ vars.LOG_LEVEL }}
-      APP_KEY: ${{ vars.APP_KEY }}
-      NODE_ENV: ${{ vars.NODE_ENV }}
-      DB_HOST: ${{ vars.DB_HOST }}
-      DB_PORT: ${{ vars.DB_PORT }}
-      DB_USER: ${{ vars.DB_USER }}
-      DB_PASSWORD: ${{ vars.DB_PASSWORD }}
-      DB_DATABASE: ${{ vars.DB_DATABASE }}
+      TZ: UTC
+      PORT: 3333
+      HOST: localhost
+      LOG_LEVEL: info
+      APP_KEY: H-F3Z9USLPf3IZfwiz_uEfum2mkQbyHO
+      NODE_ENV: development
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_DATABASE: app
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
